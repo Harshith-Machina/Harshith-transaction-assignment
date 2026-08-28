@@ -53,8 +53,8 @@ public class TransactionService {
         }
         BigDecimal amount = normalise(request.amount());
         if (!properties.isWithinLimit(amount)) {
-            throw new TransactionRuleException("Amount " + amount
-                    + " exceeds the maximum of " + properties.maxAmount());
+            throw new TransactionRuleException("Amount " + amount.toPlainString()
+                    + " exceeds the maximum of " + properties.maxAmountDisplay());
         }
         if (repository.existsById(request.transactionId())) {
             throw new DuplicateTransactionIdException(request.transactionId());

@@ -4,6 +4,7 @@ import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.Set;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.validation.annotation.Validated;
@@ -30,5 +31,10 @@ public record TransactionProperties(
 
     public boolean isWithinLimit(BigDecimal amount) {
         return amount.compareTo(maxAmount) <= 0;
+    }
+
+    /** The limit as a plain money string, e.g. {@code "10000.00"}, for messages. */
+    public String maxAmountDisplay() {
+        return maxAmount.setScale(2, RoundingMode.HALF_UP).toPlainString();
     }
 }
