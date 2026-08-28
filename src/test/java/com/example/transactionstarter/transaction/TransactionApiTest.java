@@ -66,7 +66,7 @@ class TransactionApiTest {
     void createsAValidTransactionAsPending() throws Exception {
         mockMvc.perform(post("/api/transactions")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(createBody("txn-1", "cust-1", "125.50", "GBP", "DEPOSIT")))
+                        .content(createBody("txn-1", "cust-1", "125.50", "GBP", "CASH")))
                 .andExpect(status().isCreated())
                 .andExpect(header().string("Location", "/api/transactions/txn-1"))
                 .andExpect(jsonPath("$.transactionId").value("txn-1"))
@@ -80,7 +80,7 @@ class TransactionApiTest {
     void rejectsATransactionThatFailsValidationAndStoresNothing() throws Exception {
         mockMvc.perform(post("/api/transactions")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(createBody("txn-bad", "cust-1", "-5.00", "GBP", "DEPOSIT")))
+                        .content(createBody("txn-bad", "cust-1", "-5.00", "GBP", "CASH")))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.fieldErrors[0].field").value("amount"));
 
@@ -91,7 +91,7 @@ class TransactionApiTest {
     void rejectsAnUnsupportedCurrency() throws Exception {
         mockMvc.perform(post("/api/transactions")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(createBody("txn-jpy", "cust-1", "10.00", "JPY", "DEPOSIT")))
+                        .content(createBody("txn-jpy", "cust-1", "10.00", "JPY", "CASH")))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.message").value(org.hamcrest.Matchers.containsString("JPY")));
 
@@ -102,7 +102,7 @@ class TransactionApiTest {
     void acceptsEveryConfiguredCurrency() throws Exception {
         String[] currencies = {"GBP", "EUR", "USD", "INR"};
         for (int i = 0; i < currencies.length; i++) {
-            create("cur-" + i, "cust-1", "10.00", currencies[i], "DEPOSIT");
+            create("cur-" + i, "cust-1", "10.00", currencies[i], "CASH");
         }
         assertThat(repository.count()).isEqualTo(currencies.length);
     }
@@ -111,7 +111,7 @@ class TransactionApiTest {
     void rejectsAnAmountOverTheLimit() throws Exception {
         mockMvc.perform(post("/api/transactions")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(createBody("txn-big", "cust-1", "10000.01", "GBP", "DEPOSIT")))
+                        .content(createBody("txn-big", "cust-1", "10000.01", "GBP", "CASH")))
                 .andExpect(status().isBadRequest());
 
         assertThat(repository.count()).isZero();
@@ -128,11 +128,11 @@ class TransactionApiTest {
 
     @Test
     void rejectsADuplicateTransactionId() throws Exception {
-        create("txn-dup", "cust-1", "10.00", "GBP", "DEPOSIT");
+        create("txn-dup", "cust-1", "10.00", "GBP", "CASH");
 
         mockMvc.perform(post("/api/transactions")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(createBody("txn-dup", "cust-2", "20.00", "EUR", "REFUND")))
+                        .content(createBody("txn-dup", "cust-2", "20.00", "EUR", "ONLINE")))
                 .andExpect(status().isConflict());
 
         // original is untouched
@@ -154,20 +154,20 @@ class TransactionApiTest {
 
     @Test
     void returnsAnExistingTransaction() throws Exception {
-        create("txn-2", "cust-9", "42.00", "EUR", "TRANSFER");
+        create("txn-2", "cust-9", "42.00", "EUR", "UPI");
 
         mockMvc.perform(get("/api/transactions/txn-2"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.customerId").value("cust-9"))
                 .andExpect(jsonPath("$.currency").value("EUR"))
-                .andExpect(jsonPath("$.type").value("TRANSFER"));
+                .andExpect(jsonPath("$.type").value("UPI"));
     }
 
     // --- C. Update status --------------------------------------------------------
 
     @Test
     void updatesStatusOnAnAllowedTransition() throws Exception {
-        create("txn-3", "cust-1", "10.00", "GBP", "DEPOSIT");
+        create("txn-3", "cust-1", "10.00", "GBP", "CASH");
 
         mockMvc.perform(patch("/api/transactions/txn-3/status")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -181,7 +181,7 @@ class TransactionApiTest {
 
     @Test
     void rejectsAForbiddenStatusTransitionAndLeavesTheTransactionUnchanged() throws Exception {
-        create("txn-4", "cust-1", "10.00", "GBP", "DEPOSIT");
+        create("txn-4", "cust-1", "10.00", "GBP", "CASH");
         mockMvc.perform(patch("/api/transactions/txn-4/status")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"status\":\"COMPLETED\"}"))
@@ -208,9 +208,9 @@ class TransactionApiTest {
 
     @Test
     void returnsOnlyTheGivenCustomersTransactions() throws Exception {
-        create("a-1", "alice", "10.00", "GBP", "DEPOSIT");
-        create("a-2", "alice", "20.00", "GBP", "WITHDRAWAL");
-        create("b-1", "bob", "30.00", "EUR", "DEPOSIT");
+        create("a-1", "alice", "10.00", "GBP", "CASH");
+        create("a-2", "alice", "20.00", "GBP", "CARD");
+        create("b-1", "bob", "30.00", "EUR", "CASH");
 
         mockMvc.perform(get("/api/transactions").param("customerId", "alice"))
                 .andExpect(status().isOk())

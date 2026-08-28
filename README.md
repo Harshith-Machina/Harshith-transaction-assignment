@@ -51,7 +51,10 @@ are trivial to change:
 |---|---|---|
 | Permitted currencies | `GBP`, `EUR`, `USD`, `INR` | `application.yml` -> `transaction.allowed-currencies` |
 | Maximum amount | `10000.00` | `application.yml` -> `transaction.max-amount` |
-| Transaction types | `DEPOSIT`, `WITHDRAWAL`, `TRANSFER`, `REFUND` | `TransactionType` enum |
+| Transaction types | `CASH`, `CARD`, `UPI`, `ONLINE` | `TransactionType` enum |
+
+The brief leaves "Transaction Type" open. For a shop-counter service the useful
+meaning is **how the customer paid**, so the type values are payment methods.
 
 Other assumptions:
 
@@ -111,7 +114,7 @@ validation failures).
 
 ```json
 { "transactionId": "txn-1001", "customerId": "cust-42",
-  "amount": 125.50, "currency": "GBP", "type": "DEPOSIT" }
+  "amount": 125.50, "currency": "GBP", "type": "CASH" }
 ```
 
 `201 Created`, `Location: /api/transactions/txn-1001`, body is the stored

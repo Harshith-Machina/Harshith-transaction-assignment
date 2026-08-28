@@ -63,7 +63,7 @@
 ./mvnw spring-boot:run   # in another terminal
 
 curl -i -X POST localhost:8080/api/transactions -H 'Content-Type: application/json' \
-  -d '{"transactionId":"t1","customerId":"c1","amount":50.00,"currency":"GBP","type":"DEPOSIT"}'
+  -d '{"transactionId":"t1","customerId":"c1","amount":50.00,"currency":"GBP","type":"CASH"}'
 curl -i localhost:8080/api/transactions/t1
 curl -i -X PATCH localhost:8080/api/transactions/t1/status -H 'Content-Type: application/json' \
   -d '{"status":"COMPLETED"}'

@@ -37,6 +37,6 @@ public record CreateTransactionRequest(
         @Pattern(regexp = "^[A-Z]{3}$", message = "must be a 3-letter ISO currency code")
         String currency,
 
-        @NotNull(message = "must be one of DEPOSIT, WITHDRAWAL, TRANSFER, REFUND")
+        @NotNull(message = "must be one of CASH, CARD, UPI, ONLINE")
         TransactionType type) {
 }

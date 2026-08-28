@@ -263,7 +263,7 @@
           <tr><td class="tag">customerId</td><td>String</td><td>Indexed for the by-customer query</td></tr>
           <tr><td class="tag">amount</td><td>BigDecimal</td><td>Never <code>double</code>; stored at scale 2, so <code>10</code> and <code>10.00</code> are equal</td></tr>
           <tr><td class="tag">currency</td><td>String</td><td>3-letter uppercase; must be in the permitted set</td></tr>
-          <tr><td class="tag">type</td><td>enum</td><td><code>DEPOSIT</code> / <code>WITHDRAWAL</code> / <code>TRANSFER</code> / <code>REFUND</code></td></tr>
+          <tr><td class="tag">type</td><td>enum</td><td><code>CASH</code> / <code>CARD</code> / <code>UPI</code> / <code>ONLINE</code></td></tr>
           <tr><td class="tag">status</td><td>enum</td><td>Server-controlled; starts at <code>PENDING</code></td></tr>
           <tr><td class="tag">createdAt / updatedAt</td><td>Instant</td><td>Set from an injectable <code>Clock</code></td></tr>
         </tbody>
@@ -371,7 +371,7 @@
         <ul class="clean">
           <li>Currencies <code>GBP, EUR, USD, INR</code> &mdash; <code>application.yml</code></li>
           <li>Maximum amount <code>10000.00</code> &mdash; <code>application.yml</code></li>
-          <li>Types <code>DEPOSIT, WITHDRAWAL, TRANSFER, REFUND</code> &mdash; <code>TransactionType</code> enum</li>
+          <li>Types <code>CASH, CARD, UPI, ONLINE</code> &mdash; <code>TransactionType</code> enum</li>
         </ul>
       </div>
       <div class="card">
