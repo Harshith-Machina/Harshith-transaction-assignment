@@ -99,6 +99,15 @@ class TransactionApiTest {
     }
 
     @Test
+    void acceptsEveryConfiguredCurrency() throws Exception {
+        String[] currencies = {"GBP", "EUR", "USD", "INR"};
+        for (int i = 0; i < currencies.length; i++) {
+            create("cur-" + i, "cust-1", "10.00", currencies[i], "DEPOSIT");
+        }
+        assertThat(repository.count()).isEqualTo(currencies.length);
+    }
+
+    @Test
     void rejectsAnAmountOverTheLimit() throws Exception {
         mockMvc.perform(post("/api/transactions")
                         .contentType(MediaType.APPLICATION_JSON)

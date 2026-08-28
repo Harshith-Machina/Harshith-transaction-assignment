@@ -49,7 +49,7 @@ are trivial to change:
 
 | Setting | Value used | Where to change |
 |---|---|---|
-| Permitted currencies | `GBP`, `EUR`, `USD` | `application.yml` -> `transaction.allowed-currencies` |
+| Permitted currencies | `GBP`, `EUR`, `USD`, `INR` | `application.yml` -> `transaction.allowed-currencies` |
 | Maximum amount | `10000.00` | `application.yml` -> `transaction.max-amount` |
 | Transaction types | `DEPOSIT`, `WITHDRAWAL`, `TRANSFER`, `REFUND` | `TransactionType` enum |
 

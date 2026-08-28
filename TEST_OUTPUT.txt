@@ -1,7 +1,7 @@
 Command: ./mvnw clean test   (mvnw.cmd clean test on Windows)
 Date:    2026-08-28
 Java:    17.0.20.1 (Temurin)
-Result:  BUILD SUCCESS - 32 tests, 0 failures, 0 errors, 0 skipped
+Result:  BUILD SUCCESS - 33 tests, 0 failures, 0 errors, 0 skipped
 
 (Spring Boot startup log lines removed for readability. The full, unedited
 console output is reproducible with `./mvnw clean test` from a clean clone.)
@@ -20,13 +20,13 @@ console output is reproducible with `./mvnw clean test` from a clean clone.)
 [INFO] Running com.example.transactionstarter.transaction.domain.TransactionStatusTest
 [INFO] Tests run: 17, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.210 s -- in com.example.transactionstarter.transaction.domain.TransactionStatusTest
 [INFO] Running com.example.transactionstarter.transaction.TransactionApiTest
-[INFO] Tests run: 14, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 8.189 s -- in com.example.transactionstarter.transaction.TransactionApiTest
+[INFO] Tests run: 15, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 6.230 s -- in com.example.transactionstarter.transaction.TransactionApiTest
 [INFO] Running com.example.transactionstarter.TransactionStarterApplicationTests
-[INFO] Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.800 s -- in com.example.transactionstarter.TransactionStarterApplicationTests
+[INFO] Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.576 s -- in com.example.transactionstarter.TransactionStarterApplicationTests
 [INFO]
 [INFO] Results:
 [INFO]
-[INFO] Tests run: 32, Failures: 0, Errors: 0, Skipped: 0
+[INFO] Tests run: 33, Failures: 0, Errors: 0, Skipped: 0
 [INFO]
 [INFO] ------------------------------------------------------------------------
 [INFO] BUILD SUCCESS
@@ -43,10 +43,11 @@ TransactionStatusTest (17)  - status transition rules, no Spring context
   terminalStatusesHaveNoOnwardTransitions
   newTransactionsStartPending
 
-TransactionApiTest (14)     - full HTTP + in-memory DB
+TransactionApiTest (15)     - full HTTP + in-memory DB
   createsAValidTransactionAsPending
   rejectsATransactionThatFailsValidationAndStoresNothing
   rejectsAnUnsupportedCurrency
+  acceptsEveryConfiguredCurrency          (GBP, EUR, USD, INR)
   rejectsAnAmountOverTheLimit
   rejectsAnUnknownTransactionType
   rejectsADuplicateTransactionId

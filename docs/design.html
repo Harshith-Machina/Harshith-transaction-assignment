@@ -206,7 +206,7 @@
       <span class="chip">Java 17</span>
       <span class="chip">Spring Boot 3.5</span>
       <span class="chip">H2 in-memory</span>
-      <span class="chip"><strong>32 tests passing</strong></span>
+      <span class="chip"><strong>33 tests passing</strong></span>
     </div>
   </header>
 
@@ -285,7 +285,7 @@
           <tr><td class="tag">amount</td><td>&gt; 0, at most 2 decimal places</td><td>annotation</td><td><span class="tag bad">400</span></td></tr>
           <tr><td class="tag">amount</td><td>&le; 10000.00 (configured)</td><td>service</td><td><span class="tag bad">400</span></td></tr>
           <tr><td class="tag">currency</td><td>exactly 3 uppercase letters</td><td>annotation</td><td><span class="tag bad">400</span></td></tr>
-          <tr><td class="tag">currency</td><td>in {GBP, EUR, USD}</td><td>service</td><td><span class="tag bad">400</span></td></tr>
+          <tr><td class="tag">currency</td><td>in {GBP, EUR, USD, INR}</td><td>service</td><td><span class="tag bad">400</span></td></tr>
           <tr><td class="tag">type</td><td>a known enum value</td><td>annotation + JSON parse</td><td><span class="tag bad">400</span></td></tr>
           <tr><td class="tag">status (create)</td><td>not accepted &mdash; forced to <code>PENDING</code></td><td>DTO omits it</td><td><span class="tag ok">&mdash;</span></td></tr>
         </tbody>
@@ -369,7 +369,7 @@
       <div class="card">
         <h3 style="margin-top:0">Variant defaults</h3>
         <ul class="clean">
-          <li>Currencies <code>GBP, EUR, USD</code> &mdash; <code>application.yml</code></li>
+          <li>Currencies <code>GBP, EUR, USD, INR</code> &mdash; <code>application.yml</code></li>
           <li>Maximum amount <code>10000.00</code> &mdash; <code>application.yml</code></li>
           <li>Types <code>DEPOSIT, WITHDRAWAL, TRANSFER, REFUND</code> &mdash; <code>TransactionType</code> enum</li>
         </ul>
@@ -388,14 +388,14 @@
 
   <section>
     <p class="eyebrow">Testing</p>
-    <h2>32 tests, two levels</h2>
+    <h2>33 tests, two levels</h2>
     <div class="grid two">
       <div class="card">
         <h3 style="margin-top:0">TransactionStatusTest &mdash; 17</h3>
         <p style="margin:0;color:var(--ink-soft);font-size:.92rem">Plain unit tests, no Spring. Allowed pairs, forbidden pairs, every self-transition, terminal states, initial state.</p>
       </div>
       <div class="card">
-        <h3 style="margin-top:0">TransactionApiTest &mdash; 14</h3>
+        <h3 style="margin-top:0">TransactionApiTest &mdash; 15</h3>
         <p style="margin:0;color:var(--ink-soft);font-size:.92rem"><code>@SpringBootTest</code> + <code>MockMvc</code> over real H2. The four cases the brief names, plus unsupported currency, over-limit amount, unknown type, both status outcomes, per-customer filtering, empty list, missing parameter.</p>
       </div>
     </div>
