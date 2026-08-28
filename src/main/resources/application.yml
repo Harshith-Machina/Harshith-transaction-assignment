@@ -14,3 +14,9 @@ spring:
 
 server:
   port: 8080
+
+# Business limits for transactions. These reflect the exercise "variant" and are
+# the only place currency / amount rules are configured.
+transaction:
+  allowed-currencies: GBP,EUR,USD
+  max-amount: 10000.00
