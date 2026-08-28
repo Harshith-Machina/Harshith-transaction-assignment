@@ -163,7 +163,7 @@ async function createTransaction(evt) {
     if (ok) {
       showResult("#formResult", "ok", "Recorded",
         el("div", {}, el("code", { textContent: data.transactionId }),
-          ` · ${money(data.amount, data.currency)} · ${data.status}`));
+          ` · ${money(data.amount, data.currency)} · starts as PENDING (see the table for live status)`));
       upsertRow(data, true);
       $("#txnForm").reset();
       $("#transactionId").value = genId();
@@ -188,6 +188,7 @@ async function changeStatus(id, status) {
     if (ok) {
       upsertRow(data, true);
       showResult("#lookupResult", "ok", `${id} → ${status}`, null);
+      $("#formResult").hidden = true;   // the "Recorded ... PENDING" receipt is now stale
     } else {
       showResult("#lookupResult", "bad", "Status not changed", apiErrorDetail(data));
     }
