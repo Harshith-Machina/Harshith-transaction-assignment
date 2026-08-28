@@ -21,6 +21,14 @@ Linux / macOS:
 To run the app: `./mvnw spring-boot:run` (starts on `http://localhost:8080`).
 The database is in-memory H2 and is recreated on every start.
 
+### Optional web console
+
+Opening `http://localhost:8080/` in a browser serves a small static page
+(`src/main/resources/static/`) for recording a transaction, looking transactions
+up by customer or id, and advancing status. It is a thin client over the same
+REST API and is **not part of the assessed exercise** &mdash; the API is the
+deliverable. It adds no dependencies and does not affect `mvnw clean test`.
+
 The latest test run is in [`TEST_OUTPUT.txt`](TEST_OUTPUT.txt): **32 tests, all passing.**
 
 ## My understanding of the problem

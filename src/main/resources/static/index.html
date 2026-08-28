@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Counter &middot; Transactions</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="shell">
+
+  <header class="topbar">
+    <div class="brand">
+      <span class="mark">&#9632;</span>
+      <div>
+        <h1>Counter</h1>
+        <p>Record a customer transaction, look one up, move it through its states.</p>
+      </div>
+    </div>
+    <div class="api-status" id="apiStatus"><span class="dot"></span><span id="apiStatusText">checking API&hellip;</span></div>
+  </header>
+
+  <main class="grid">
+
+    <!-- New transaction -->
+    <section class="card" id="newCard">
+      <h2>New transaction</h2>
+      <form id="txnForm" novalidate>
+        <div class="field">
+          <label for="customerId">Customer ID</label>
+          <input id="customerId" name="customerId" autocomplete="off" placeholder="cust-42" required>
+        </div>
+
+        <div class="row">
+          <div class="field grow">
+            <label for="amount">Amount</label>
+            <input id="amount" name="amount" type="number" inputmode="decimal" step="0.01" min="0.01" placeholder="0.00" required>
+          </div>
+          <div class="field">
+            <label for="currency">Currency</label>
+            <select id="currency" name="currency">
+              <option value="GBP">GBP &pound;</option>
+              <option value="EUR">EUR &euro;</option>
+              <option value="USD">USD $</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="type">Type</label>
+          <select id="type" name="type">
+            <option value="DEPOSIT">Deposit</option>
+            <option value="WITHDRAWAL">Withdrawal</option>
+            <option value="TRANSFER">Transfer</option>
+            <option value="REFUND">Refund</option>
+          </select>
+        </div>
+
+        <details class="advanced">
+          <summary>Transaction ID</summary>
+          <div class="field">
+            <label for="transactionId">Generated for you &mdash; edit only if you have your own reference</label>
+            <div class="row tight">
+              <input id="transactionId" name="transactionId" autocomplete="off" class="grow mono" required>
+              <button type="button" class="ghost" id="regenId" title="Generate a new id">&#8635;</button>
+            </div>
+          </div>
+        </details>
+
+        <button type="submit" class="primary" id="submitBtn">Record transaction</button>
+      </form>
+
+      <div class="result" id="formResult" hidden></div>
+    </section>
+
+    <!-- Lookup -->
+    <section class="card" id="lookupCard">
+      <h2>Look up</h2>
+
+      <div class="lookup">
+        <div class="field">
+          <label for="byCustomer">All transactions for a customer</label>
+          <div class="row tight">
+            <input id="byCustomer" class="grow" autocomplete="off" placeholder="cust-42">
+            <button type="button" id="loadCustomer">Load</button>
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="byId">One transaction by ID</label>
+          <div class="row tight">
+            <input id="byId" class="grow mono" autocomplete="off" placeholder="TXN-&hellip;">
+            <button type="button" id="loadId">Find</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="result" id="lookupResult" hidden></div>
+    </section>
+
+    <!-- Table -->
+    <section class="card wide" id="tableCard">
+      <div class="table-head">
+        <h2 id="tableTitle">This session</h2>
+        <span class="muted" id="tableMeta"></span>
+      </div>
+      <div class="table-scroll">
+        <table id="txnTable">
+          <thead>
+            <tr>
+              <th>Transaction</th><th>Customer</th><th class="num">Amount</th>
+              <th>Type</th><th>Status</th><th>Updated</th><th>Advance status</th>
+            </tr>
+          </thead>
+          <tbody id="txnBody"></tbody>
+        </table>
+      </div>
+      <p class="empty" id="tableEmpty">Nothing to show yet. Record a transaction or run a lookup.</p>
+    </section>
+
+  </main>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>
