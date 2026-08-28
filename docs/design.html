@@ -1,0 +1,436 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Transactions Service Design</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+  :root {
+    --ground: #f6f4ef;
+    --surface: #ffffff;
+    --surface-sunk: #efece4;
+    --ink: #1b1d1e;
+    --ink-soft: #55595a;
+    --ink-faint: #85888a;
+    --hairline: #e0dcd2;
+    --accent: #bd551f;
+    --accent-ink: #97430f;
+    --ok: #3f7d58;
+    --warn: #b07216;
+    --bad: #b03b39;
+    --shadow: 0 1px 2px rgba(27, 29, 30, .04), 0 8px 24px -12px rgba(27, 29, 30, .12);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground: #151719;
+      --surface: #1d2023;
+      --surface-sunk: #212528;
+      --ink: #e9e6e0;
+      --ink-soft: #b0aca4;
+      --ink-faint: #7f8286;
+      --hairline: #2f3438;
+      --accent: #e07a45;
+      --accent-ink: #e69268;
+      --ok: #6fb08a;
+      --warn: #d3a24e;
+      --bad: #d97572;
+      --shadow: 0 1px 2px rgba(0, 0, 0, .3), 0 10px 30px -14px rgba(0, 0, 0, .5);
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground: #151719;
+    --surface: #1d2023;
+    --surface-sunk: #212528;
+    --ink: #e9e6e0;
+    --ink-soft: #b0aca4;
+    --ink-faint: #7f8286;
+    --hairline: #2f3438;
+    --accent: #e07a45;
+    --accent-ink: #e69268;
+    --ok: #6fb08a;
+    --warn: #d3a24e;
+    --bad: #d97572;
+    --shadow: 0 1px 2px rgba(0, 0, 0, .3), 0 10px 30px -14px rgba(0, 0, 0, .5);
+  }
+
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0;
+    background: var(--ground);
+    color: var(--ink);
+    font-family: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+    font-size: 17px;
+    line-height: 1.65;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap { max-width: 940px; margin: 0 auto; padding: clamp(2rem, 1rem + 5vw, 5.5rem) clamp(1.1rem, .4rem + 3vw, 3rem) 5rem; }
+  .measure { max-width: 68ch; }
+
+  header.masthead { border-bottom: 1px solid var(--hairline); padding-bottom: 2.4rem; margin-bottom: 3rem; }
+  .kicker {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: .74rem; letter-spacing: .18em; text-transform: uppercase;
+    color: var(--accent-ink); margin: 0 0 1rem;
+  }
+  h1 {
+    font-family: "Fraunces", Georgia, "Times New Roman", serif;
+    font-weight: 500; font-optical-sizing: auto;
+    font-size: clamp(2.1rem, 1.4rem + 3vw, 3.25rem);
+    line-height: 1.08; letter-spacing: -.012em; text-wrap: balance;
+    margin: 0 0 .9rem;
+  }
+  .standfirst { font-size: 1.12rem; color: var(--ink-soft); margin: 0; }
+
+  .chips { display: flex; flex-wrap: wrap; gap: .5rem; margin-top: 1.8rem; }
+  .chip {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: .76rem; letter-spacing: .02em;
+    padding: .3rem .6rem; border: 1px solid var(--hairline); border-radius: 999px;
+    color: var(--ink-soft); background: var(--surface);
+  }
+  .chip strong { color: var(--ok); font-weight: 500; }
+
+  section { margin-top: 3.4rem; }
+  .eyebrow {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: .72rem; letter-spacing: .16em; text-transform: uppercase;
+    color: var(--ink-faint); margin: 0 0 .7rem;
+  }
+  h2 {
+    font-family: "Fraunces", Georgia, serif; font-weight: 500;
+    font-size: clamp(1.5rem, 1.2rem + 1.2vw, 1.95rem); line-height: 1.15;
+    letter-spacing: -.01em; text-wrap: balance; margin: 0 0 1rem;
+  }
+  h3 {
+    font-size: 1rem; font-weight: 600; margin: 1.8rem 0 .5rem;
+    letter-spacing: -.005em;
+  }
+  p { margin: 0 0 1rem; }
+  a { color: var(--accent-ink); text-underline-offset: 2px; }
+  strong { font-weight: 600; }
+
+  .card {
+    background: var(--surface); border: 1px solid var(--hairline);
+    border-radius: 14px; padding: 1.4rem 1.5rem; box-shadow: var(--shadow);
+  }
+  .grid { display: grid; gap: 1rem; }
+  @media (min-width: 620px) { .grid.two { grid-template-columns: 1fr 1fr; } }
+
+  /* flow diagram */
+  .flow { display: flex; flex-wrap: wrap; align-items: stretch; gap: .55rem; margin: 1.4rem 0 .4rem; }
+  .flow .node {
+    flex: 1 1 130px; background: var(--surface); border: 1px solid var(--hairline);
+    border-radius: 10px; padding: .8rem .85rem; min-width: 0;
+  }
+  .flow .node .n-label { font-weight: 600; font-size: .93rem; }
+  .flow .node .n-sub {
+    font-family: "IBM Plex Mono", monospace; font-size: .72rem;
+    color: var(--ink-faint); margin-top: .2rem; word-break: break-word;
+  }
+  .flow .arrow { align-self: center; color: var(--accent); font-size: 1.1rem; flex: 0 0 auto; }
+  .aside-note {
+    margin-top: .6rem; font-size: .86rem; color: var(--ink-soft);
+    border-left: 2px solid var(--accent); padding-left: .8rem;
+  }
+
+  figure { margin: 1.4rem 0 0; }
+  figcaption { font-size: .84rem; color: var(--ink-faint); margin-top: .7rem; }
+  .diagram-scroll { overflow-x: auto; }
+  svg.diagram { display: block; width: 100%; min-width: 520px; height: auto; }
+  svg.diagram text {
+    font-family: "IBM Plex Sans", sans-serif; fill: var(--ink);
+  }
+  svg.diagram .mono {
+    font-family: "IBM Plex Mono", monospace; fill: var(--ink-faint); font-size: 11px;
+  }
+
+  .tbl-scroll { overflow-x: auto; margin: 1.2rem 0; }
+  table { border-collapse: collapse; width: 100%; font-size: .92rem; min-width: 460px; }
+  caption { text-align: left; color: var(--ink-faint); font-size: .82rem; margin-bottom: .5rem; }
+  th, td { text-align: left; padding: .6rem .7rem; border-bottom: 1px solid var(--hairline); vertical-align: top; }
+  thead th {
+    font-family: "IBM Plex Mono", monospace; font-size: .72rem; letter-spacing: .08em;
+    text-transform: uppercase; color: var(--ink-faint); font-weight: 500;
+  }
+  td code, p code, li code {
+    font-family: "IBM Plex Mono", monospace; font-size: .86em;
+    background: var(--surface-sunk); padding: .1rem .35rem; border-radius: 5px;
+  }
+  .tag { font-family: "IBM Plex Mono", monospace; font-size: .78rem; white-space: nowrap; }
+  .tag.ok { color: var(--ok); }
+  .tag.warn { color: var(--warn); }
+  .tag.bad { color: var(--bad); }
+
+  .endpoints { display: grid; gap: .9rem; margin-top: 1.2rem; }
+  .endpoint { background: var(--surface); border: 1px solid var(--hairline); border-radius: 12px; padding: 1rem 1.1rem; }
+  .endpoint .line { display: flex; align-items: baseline; gap: .6rem; flex-wrap: wrap; }
+  .method {
+    font-family: "IBM Plex Mono", monospace; font-size: .72rem; font-weight: 500;
+    letter-spacing: .06em; padding: .2rem .45rem; border-radius: 5px;
+    border: 1px solid var(--hairline); color: var(--ink-soft);
+  }
+  .method.post { color: var(--ok); border-color: color-mix(in srgb, var(--ok) 40%, var(--hairline)); }
+  .method.get { color: var(--accent-ink); border-color: color-mix(in srgb, var(--accent) 35%, var(--hairline)); }
+  .method.patch { color: var(--warn); border-color: color-mix(in srgb, var(--warn) 40%, var(--hairline)); }
+  .path { font-family: "IBM Plex Mono", monospace; font-size: .9rem; }
+  .endpoint p { margin: .55rem 0 0; font-size: .9rem; color: var(--ink-soft); }
+  .codes { margin-top: .5rem; font-family: "IBM Plex Mono", monospace; font-size: .78rem; color: var(--ink-faint); }
+
+  ul.clean { margin: .4rem 0 1rem; padding-left: 1.1rem; }
+  ul.clean li { margin: .35rem 0; }
+
+  footer { margin-top: 4rem; padding-top: 1.6rem; border-top: 1px solid var(--hairline); font-size: .84rem; color: var(--ink-faint); }
+
+  @media (prefers-reduced-motion: no-preference) {
+    section, header.masthead > * { animation: rise .5s cubic-bezier(.2, .7, .3, 1) both; }
+    header.masthead > *:nth-child(2) { animation-delay: .04s; }
+    header.masthead > *:nth-child(3) { animation-delay: .08s; }
+    header.masthead > *:nth-child(4) { animation-delay: .12s; }
+    @keyframes rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="masthead">
+    <p class="kicker">Toucan Engineering Challenge &middot; Design &amp; decisions</p>
+    <h1>Customer Transactions Service</h1>
+    <p class="standfirst measure">The reasoning behind the code: how the four operations are structured, what counts as a valid transaction, how a transaction is allowed to change state, and where the seams are.</p>
+    <div class="chips">
+      <span class="chip">Java 17</span>
+      <span class="chip">Spring Boot 3.5</span>
+      <span class="chip">H2 in-memory</span>
+      <span class="chip"><strong>32 tests passing</strong></span>
+    </div>
+  </header>
+
+  <section>
+    <p class="eyebrow">The problem</p>
+    <h2>What is being built</h2>
+    <p class="measure">A service that manages customer transactions through four operations &mdash; create one, fetch one, change one's status, and list a customer's transactions. The framework, database and build are provided; the work is the domain logic: deliberate validation, controlled state changes, and a clear response for every outcome including failure.</p>
+    <p class="measure"><strong>One input is missing.</strong> The exercise assigns each candidate a variant (currencies, maximum amount, transaction types, or one extra rule) in the invitation email. That variant was not available, so documented defaults are used and isolated to one place each &mdash; see <em>Assumptions</em> below.</p>
+  </section>
+
+  <section>
+    <p class="eyebrow">Architecture</p>
+    <h2>A thin web layer over a service that owns every rule</h2>
+    <p class="measure">Each layer has one job. The controller speaks HTTP, the service decides what is allowed, the repository reads and writes. Request and response DTOs keep the HTTP contract independent of the persistence model.</p>
+
+    <div class="flow">
+      <div class="node"><div class="n-label">HTTP request</div><div class="n-sub">JSON</div></div>
+      <div class="arrow">&rarr;</div>
+      <div class="node"><div class="n-label">TransactionController</div><div class="n-sub">web/ &middot; @Valid DTOs</div></div>
+      <div class="arrow">&rarr;</div>
+      <div class="node"><div class="n-label">TransactionService</div><div class="n-sub">service/ &middot; @Transactional</div></div>
+      <div class="arrow">&rarr;</div>
+      <div class="node"><div class="n-label">TransactionRepository</div><div class="n-sub">repo/ &middot; Spring Data JPA</div></div>
+      <div class="arrow">&rarr;</div>
+      <div class="node"><div class="n-label">H2</div><div class="n-sub">in-memory</div></div>
+    </div>
+    <p class="aside-note"><strong>GlobalExceptionHandler</strong> (<code>error/</code>) sits across all of it: every thrown exception becomes one <code>ApiError</code> JSON shape with the right status code.</p>
+
+    <h3>Package layout</h3>
+    <div class="tbl-scroll">
+      <table>
+        <thead><tr><th>Package</th><th>Holds</th></tr></thead>
+        <tbody>
+          <tr><td class="tag"><code>transaction.domain</code></td><td><code>Transaction</code> entity, <code>TransactionType</code>, <code>TransactionStatus</code> (with transition rules)</td></tr>
+          <tr><td class="tag"><code>transaction.repo</code></td><td><code>TransactionRepository</code></td></tr>
+          <tr><td class="tag"><code>transaction.service</code></td><td><code>TransactionService</code> &mdash; uniqueness, currency, amount, transitions</td></tr>
+          <tr><td class="tag"><code>transaction.web</code></td><td><code>TransactionController</code> + request / response records</td></tr>
+          <tr><td class="tag"><code>transaction.error</code></td><td>exception types, <code>ApiError</code>, <code>GlobalExceptionHandler</code></td></tr>
+          <tr><td class="tag"><code>transaction</code></td><td><code>TransactionProperties</code>, <code>TransactionConfig</code> (binds limits, exposes <code>Clock</code>)</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section>
+    <p class="eyebrow">Data model</p>
+    <h2>The transaction record</h2>
+    <div class="tbl-scroll">
+      <table>
+        <caption>Stored fields. The id is caller-supplied and is the primary key.</caption>
+        <thead><tr><th>Field</th><th>Type</th><th>Notes</th></tr></thead>
+        <tbody>
+          <tr><td class="tag">transactionId</td><td>String</td><td>Primary key &mdash; the "reject a duplicate id" rule needs a natural key</td></tr>
+          <tr><td class="tag">customerId</td><td>String</td><td>Indexed for the by-customer query</td></tr>
+          <tr><td class="tag">amount</td><td>BigDecimal</td><td>Never <code>double</code>; stored at scale 2, so <code>10</code> and <code>10.00</code> are equal</td></tr>
+          <tr><td class="tag">currency</td><td>String</td><td>3-letter uppercase; must be in the permitted set</td></tr>
+          <tr><td class="tag">type</td><td>enum</td><td><code>DEPOSIT</code> / <code>WITHDRAWAL</code> / <code>TRANSFER</code> / <code>REFUND</code></td></tr>
+          <tr><td class="tag">status</td><td>enum</td><td>Server-controlled; starts at <code>PENDING</code></td></tr>
+          <tr><td class="tag">createdAt / updatedAt</td><td>Instant</td><td>Set from an injectable <code>Clock</code></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section>
+    <p class="eyebrow">Validation</p>
+    <h2>What makes a transaction valid</h2>
+    <p class="measure">Format rules are Bean Validation annotations on the request record. Rules that need the database or the configured limits live in the service. Both paths end at the same <code>ApiError</code>.</p>
+    <div class="tbl-scroll">
+      <table>
+        <thead><tr><th>Field</th><th>Rule</th><th>Checked by</th><th>On failure</th></tr></thead>
+        <tbody>
+          <tr><td class="tag">transactionId</td><td><code>^[A-Za-z0-9-]{1,64}$</code>, required</td><td>annotation</td><td><span class="tag bad">400</span></td></tr>
+          <tr><td class="tag">transactionId</td><td>must not already exist</td><td>service + DB constraint</td><td><span class="tag bad">409</span></td></tr>
+          <tr><td class="tag">customerId</td><td><code>^[A-Za-z0-9-]{1,64}$</code>, required</td><td>annotation</td><td><span class="tag bad">400</span></td></tr>
+          <tr><td class="tag">amount</td><td>&gt; 0, at most 2 decimal places</td><td>annotation</td><td><span class="tag bad">400</span></td></tr>
+          <tr><td class="tag">amount</td><td>&le; 10000.00 (configured)</td><td>service</td><td><span class="tag bad">400</span></td></tr>
+          <tr><td class="tag">currency</td><td>exactly 3 uppercase letters</td><td>annotation</td><td><span class="tag bad">400</span></td></tr>
+          <tr><td class="tag">currency</td><td>in {GBP, EUR, USD}</td><td>service</td><td><span class="tag bad">400</span></td></tr>
+          <tr><td class="tag">type</td><td>a known enum value</td><td>annotation + JSON parse</td><td><span class="tag bad">400</span></td></tr>
+          <tr><td class="tag">status (create)</td><td>not accepted &mdash; forced to <code>PENDING</code></td><td>DTO omits it</td><td><span class="tag ok">&mdash;</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section>
+    <p class="eyebrow">State</p>
+    <h2>How a transaction is allowed to change</h2>
+    <p class="measure">Status is a small state machine. A transaction stays <code>PENDING</code> until it settles; from there it succeeds, fails, or is pulled before settling. Only a settled transaction can be reversed. Three states are terminal. A request to move to the current status is rejected &mdash; nothing would change.</p>
+
+    <figure>
+      <div class="diagram-scroll">
+        <svg class="diagram" viewBox="0 0 640 300" role="img" aria-label="State diagram: PENDING moves to COMPLETED, FAILED or CANCELLED. COMPLETED moves to REVERSED. FAILED, CANCELLED and REVERSED are terminal.">
+          <defs>
+            <marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <path d="M0,0 L10,5 L0,10 z" fill="var(--accent)"></path>
+            </marker>
+          </defs>
+          <g fill="none" stroke="var(--accent)" stroke-width="1.6" marker-end="url(#ah)">
+            <path d="M148,150 C210,150 210,66 286,66"></path>
+            <path d="M148,150 L286,150"></path>
+            <path d="M148,150 C210,150 210,234 286,234"></path>
+            <path d="M430,66 L520,66"></path>
+          </g>
+          <g>
+            <rect x="34" y="128" width="114" height="44" rx="9" fill="var(--surface)" stroke="var(--warn)" stroke-width="1.6"></rect>
+            <text x="91" y="155" text-anchor="middle" font-weight="600" font-size="14">PENDING</text>
+
+            <rect x="288" y="44" width="142" height="44" rx="9" fill="var(--surface)" stroke="var(--ok)" stroke-width="1.6"></rect>
+            <text x="359" y="71" text-anchor="middle" font-weight="600" font-size="14">COMPLETED</text>
+
+            <rect x="288" y="128" width="142" height="44" rx="9" fill="var(--surface-sunk)" stroke="var(--bad)" stroke-width="1.6"></rect>
+            <text x="359" y="155" text-anchor="middle" font-weight="600" font-size="14">FAILED</text>
+
+            <rect x="288" y="212" width="142" height="44" rx="9" fill="var(--surface-sunk)" stroke="var(--bad)" stroke-width="1.6"></rect>
+            <text x="359" y="239" text-anchor="middle" font-weight="600" font-size="14">CANCELLED</text>
+
+            <rect x="522" y="44" width="118" height="44" rx="9" fill="var(--surface-sunk)" stroke="var(--bad)" stroke-width="1.6"></rect>
+            <text x="581" y="71" text-anchor="middle" font-weight="600" font-size="14">REVERSED</text>
+          </g>
+          <text class="mono" x="34" y="284">solid outline = live state &nbsp;&middot;&nbsp; filled = terminal</text>
+        </svg>
+      </div>
+      <figcaption>The rules live in the <code>TransactionStatus</code> enum, so they are unit-tested on their own without a Spring context.</figcaption>
+    </figure>
+  </section>
+
+  <section>
+    <p class="eyebrow">API</p>
+    <h2>Four operations</h2>
+    <div class="endpoints">
+      <div class="endpoint">
+        <div class="line"><span class="method post">POST</span><span class="path">/api/transactions</span></div>
+        <p>Validate and store a new transaction. Body: <code>transactionId, customerId, amount, currency, type</code>. Returns the stored record at <code>PENDING</code>.</p>
+        <div class="codes">201 Created + Location &nbsp;|&nbsp; 400 invalid &nbsp;|&nbsp; 409 duplicate id</div>
+      </div>
+      <div class="endpoint">
+        <div class="line"><span class="method get">GET</span><span class="path">/api/transactions/{transactionId}</span></div>
+        <p>Fetch one transaction by id.</p>
+        <div class="codes">200 OK &nbsp;|&nbsp; 404 not found</div>
+      </div>
+      <div class="endpoint">
+        <div class="line"><span class="method patch">PATCH</span><span class="path">/api/transactions/{transactionId}/status</span></div>
+        <p>Change status. Body: <code>{ "status": "COMPLETED" }</code>. Only allowed transitions succeed.</p>
+        <div class="codes">200 OK &nbsp;|&nbsp; 404 not found &nbsp;|&nbsp; 409 forbidden transition &nbsp;|&nbsp; 400 unknown status</div>
+      </div>
+      <div class="endpoint">
+        <div class="line"><span class="method get">GET</span><span class="path">/api/transactions?customerId={customerId}</span></div>
+        <p>List a customer's transactions, oldest first. Empty array when the customer has none &mdash; not a 404.</p>
+        <div class="codes">200 OK &nbsp;|&nbsp; 400 customerId missing</div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <p class="eyebrow">Assumptions</p>
+    <h2>Decisions taken, and where to change them</h2>
+    <div class="grid two">
+      <div class="card">
+        <h3 style="margin-top:0">Variant defaults</h3>
+        <ul class="clean">
+          <li>Currencies <code>GBP, EUR, USD</code> &mdash; <code>application.yml</code></li>
+          <li>Maximum amount <code>10000.00</code> &mdash; <code>application.yml</code></li>
+          <li>Types <code>DEPOSIT, WITHDRAWAL, TRANSFER, REFUND</code> &mdash; <code>TransactionType</code> enum</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3 style="margin-top:0">Design choices</h3>
+        <ul class="clean">
+          <li>Caller supplies the transaction id</li>
+          <li>New transactions always start <code>PENDING</code></li>
+          <li>Same-status update is a <code>409</code>, not a silent no-op</li>
+          <li>No auth, no paging, single node</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <p class="eyebrow">Testing</p>
+    <h2>32 tests, two levels</h2>
+    <div class="grid two">
+      <div class="card">
+        <h3 style="margin-top:0">TransactionStatusTest &mdash; 17</h3>
+        <p style="margin:0;color:var(--ink-soft);font-size:.92rem">Plain unit tests, no Spring. Allowed pairs, forbidden pairs, every self-transition, terminal states, initial state.</p>
+      </div>
+      <div class="card">
+        <h3 style="margin-top:0">TransactionApiTest &mdash; 14</h3>
+        <p style="margin:0;color:var(--ink-soft);font-size:.92rem"><code>@SpringBootTest</code> + <code>MockMvc</code> over real H2. The four cases the brief names, plus unsupported currency, over-limit amount, unknown type, both status outcomes, per-customer filtering, empty list, missing parameter.</p>
+      </div>
+    </div>
+    <p class="measure" style="margin-top:1rem">The provided <code>contextLoads</code> sample test is kept. Each API test clears the table first, so nothing depends on order.</p>
+  </section>
+
+  <section>
+    <p class="eyebrow">Seams</p>
+    <h2>Known limitations &amp; next steps</h2>
+    <div class="grid two">
+      <div class="card">
+        <h3 style="margin-top:0">Limitations</h3>
+        <ul class="clean">
+          <li>No authentication or authorisation</li>
+          <li>No paging on the per-customer list</li>
+          <li>Duplicate detection is check-then-write; the DB unique constraint is the real guard</li>
+          <li>Assigned variant not yet applied</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3 style="margin-top:0">With more time</h3>
+        <ul class="clean">
+          <li>A <code>@SupportedCurrency</code> annotation so currency reports as a field error</li>
+          <li>Service unit test with a mocked repo and a fixed <code>Clock</code></li>
+          <li>Idempotent create (same id + same body &rarr; existing resource)</li>
+          <li>A persisted status-change history</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    Companion to <code>README.md</code>, <code>AI_USAGE.md</code> and <code>TEST_OUTPUT.txt</code> in the same repository. Generated 2026-08-28.
+  </footer>
+
+</div>
+</body>
+</html>

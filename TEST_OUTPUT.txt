@@ -1,0 +1,63 @@
+Command: ./mvnw clean test   (mvnw.cmd clean test on Windows)
+Date:    2026-08-28
+Java:    17.0.20.1 (Temurin)
+Result:  BUILD SUCCESS - 32 tests, 0 failures, 0 errors, 0 skipped
+
+(Spring Boot startup log lines removed for readability. The full, unedited
+console output is reproducible with `./mvnw clean test` from a clean clone.)
+
+--------------------------------------------------------------------------------
+[INFO] --- maven-compiler-plugin: compile (default-compile) ---
+[INFO] Compiling 15 source files
+[INFO]
+[INFO] --- maven-compiler-plugin: testCompile (default-testCompile) ---
+[INFO] Compiling 3 source files
+[INFO]
+[INFO] --- maven-surefire-plugin: test (default-test) ---
+[INFO] -------------------------------------------------------
+[INFO]  T E S T S
+[INFO] -------------------------------------------------------
+[INFO] Running com.example.transactionstarter.transaction.domain.TransactionStatusTest
+[INFO] Tests run: 17, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.210 s -- in com.example.transactionstarter.transaction.domain.TransactionStatusTest
+[INFO] Running com.example.transactionstarter.transaction.TransactionApiTest
+[INFO] Tests run: 14, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 8.189 s -- in com.example.transactionstarter.transaction.TransactionApiTest
+[INFO] Running com.example.transactionstarter.TransactionStarterApplicationTests
+[INFO] Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.800 s -- in com.example.transactionstarter.TransactionStarterApplicationTests
+[INFO]
+[INFO] Results:
+[INFO]
+[INFO] Tests run: 32, Failures: 0, Errors: 0, Skipped: 0
+[INFO]
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD SUCCESS
+[INFO] ------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+Test breakdown
+--------------------------------------------------------------------------------
+
+TransactionStatusTest (17)  - status transition rules, no Spring context
+  permitsExpectedTransitions            x4  (PENDING->COMPLETED/FAILED/CANCELLED, COMPLETED->REVERSED)
+  rejectsUnexpectedTransitions          x6  (e.g. PENDING->REVERSED, COMPLETED->PENDING)
+  neverPermitsATransitionToItself       x5  (one per status)
+  terminalStatusesHaveNoOnwardTransitions
+  newTransactionsStartPending
+
+TransactionApiTest (14)     - full HTTP + in-memory DB
+  createsAValidTransactionAsPending
+  rejectsATransactionThatFailsValidationAndStoresNothing
+  rejectsAnUnsupportedCurrency
+  rejectsAnAmountOverTheLimit
+  rejectsAnUnknownTransactionType
+  rejectsADuplicateTransactionId
+  returns404ForATransactionThatDoesNotExist
+  returnsAnExistingTransaction
+  updatesStatusOnAnAllowedTransition
+  rejectsAForbiddenStatusTransitionAndLeavesTheTransactionUnchanged
+  returns404WhenUpdatingStatusOfAnUnknownTransaction
+  returnsOnlyTheGivenCustomersTransactions
+  returnsAnEmptyArrayForACustomerWithNoTransactions
+  returns400WhenCustomerIdParameterIsMissing
+
+TransactionStarterApplicationTests (1) - provided sample, kept
+  contextLoads
