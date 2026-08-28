@@ -12,6 +12,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 /**
  * Turns exceptions into a single {@link ApiError} shape with the right HTTP status,
@@ -77,6 +78,14 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ApiError> handleRule(TransactionRuleException ex,
                                                HttpServletRequest request) {
         return build(HttpStatus.BAD_REQUEST, ex.getMessage(), request, List.of());
+    }
+
+    /** Unknown URL or missing static file (e.g. /favicon.ico): a plain 404, not logged. */
+    @ExceptionHandler(NoResourceFoundException.class)
+    public ResponseEntity<ApiError> handleNoResource(NoResourceFoundException ex,
+                                                     HttpServletRequest request) {
+        return build(HttpStatus.NOT_FOUND, "No resource at " + request.getRequestURI(),
+                request, List.of());
     }
 
     /** Anything unforeseen: log it, return a generic 500 with no internals. */

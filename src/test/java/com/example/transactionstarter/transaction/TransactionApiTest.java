@@ -153,6 +153,13 @@ class TransactionApiTest {
     }
 
     @Test
+    void returns404ForAnUnknownUrl() throws Exception {
+        mockMvc.perform(get("/favicon.ico"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.status").value(404));
+    }
+
+    @Test
     void returnsAnExistingTransaction() throws Exception {
         create("txn-2", "cust-9", "42.00", "EUR", "UPI");
 
