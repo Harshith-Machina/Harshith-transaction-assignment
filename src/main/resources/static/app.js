@@ -30,6 +30,9 @@ const el = (tag, props = {}, ...kids) => {
 /* <tr> elements currently shown, keyed by transactionId, so status changes update in place */
 const rows = new Map();
 
+/* the transaction shown in the "Recorded" receipt, so its status can be kept live */
+let lastRecordedId = null;
+
 /* ---------- helpers ---------- */
 
 function genId() {
@@ -67,6 +70,16 @@ function showResult(target, kind, title, detailNode) {
   box.hidden = false;
   box.replaceChildren(el("h3", { textContent: title }));
   if (detailNode) box.append(detailNode);
+}
+
+/* the "Recorded" receipt, showing the transaction's current status as a live badge */
+function renderReceipt(t) {
+  lastRecordedId = t.transactionId;
+  showResult("#formResult", "ok", "Recorded",
+    el("div", {},
+      el("code", { textContent: t.transactionId }),
+      ` · ${money(t.amount, t.currency)} · `,
+      el("span", { className: `badge ${t.status}`, textContent: t.status })));
 }
 
 function apiErrorDetail(err) {
@@ -161,9 +174,7 @@ async function createTransaction(evt) {
       body: JSON.stringify(body),
     });
     if (ok) {
-      showResult("#formResult", "ok", "Recorded",
-        el("div", {}, el("code", { textContent: data.transactionId }),
-          ` · ${money(data.amount, data.currency)} · starts as PENDING (see the table for live status)`));
+      renderReceipt(data);
       upsertRow(data, true);
       $("#txnForm").reset();
       $("#transactionId").value = genId();
@@ -188,7 +199,7 @@ async function changeStatus(id, status) {
     if (ok) {
       upsertRow(data, true);
       showResult("#lookupResult", "ok", `${id} → ${status}`, null);
-      $("#formResult").hidden = true;   // the "Recorded ... PENDING" receipt is now stale
+      if (data.transactionId === lastRecordedId) renderReceipt(data);  // keep the receipt live
     } else {
       showResult("#lookupResult", "bad", "Status not changed", apiErrorDetail(data));
     }
