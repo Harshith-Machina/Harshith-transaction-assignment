@@ -1,61 +1,84 @@
 # AI Usage Disclosure
 
-> **Note to the candidate:** this is a draft based on how the code was produced.
-> Read every file, then edit the sections marked _[confirm / add your own words]_
-> so this reflects **your** review. Do not submit claims you cannot back up in the
-> interview.
+> This describes how the code in this repository was produced. Read it against the
+> commit history (`git log`) and the code before the interview, and adjust any
+> wording that does not match your own account of the work. Do not claim anything
+> here you cannot walk through.
 
 ## Tools used
 
-- **Claude (Anthropic), via the Claude Code CLI** - used as a pair programmer to
-  go from the challenge document to a working implementation.
+- **Claude (Anthropic), via the Claude Code CLI** — used as a pair programmer to go
+  from the challenge document to a working implementation, and to draft the docs.
 
 ## What it was used for
 
-- Reading the challenge brief and the starter project and proposing a structure
+- Reading the challenge brief and the starter project, then proposing a structure
   (package layout, layering, where each rule belongs) before any code was written.
 - Generating the first version of: the `Transaction` entity and the two enums, the
   repository, `TransactionService`, the controller, the request/response DTOs, the
-  exception types and the `@RestControllerAdvice`, the configuration properties,
-  and both test classes.
-- Drafting this README and this disclosure.
+  exception types and the `@RestControllerAdvice`, the `@ConfigurationProperties`
+  binding, and both test classes.
+- Building the optional static web console (`src/main/resources/static/`).
+- Drafting `README.md`, `docs/design.html` and this disclosure.
 
 ## What the AI generated or suggested that is significant
 
-- The service/repository/controller split and the `transaction.domain / repo /
-  service / web / error` package layout.
+- The service / repository / controller split and the
+  `transaction.domain / repo / service / web / error` package layout.
 - Putting the status-transition rules **inside the `TransactionStatus` enum** so
-  they can be unit-tested without Spring.
-- Keeping currency and amount limits in `application.yml` (bound to a validated
-  `@ConfigurationProperties` record) so the "variant" is a one-line change.
+  they can be unit-tested without a Spring context (`TransactionStatusTest`).
+- Keeping currency and amount limits in `application.yml`, bound to a validated
+  `@ConfigurationProperties` record (`TransactionProperties`), so changing the
+  variant is a one-line configuration change.
 - Using a caller-supplied id as the JPA primary key, with `existsById` plus the
   database unique constraint as a backstop for duplicate detection.
 - The single `ApiError` response shape and the mapping of each exception to a
   status code (400 / 404 / 409 / 500).
+- Treating "Transaction Type" as the payment method (`CASH`, `CARD`, `UPI`,
+  `ONLINE`), since the brief leaves the type values to the candidate.
 
-## What was changed, corrected or rejected _[confirm / add your own words]_
+## What was changed, corrected or rejected during development
 
-- _[e.g. "I renamed X", "I removed a test that asserted nothing", "I changed the
-  status model because my variant defines different types", "I decided a
-  same-status update should be a 200 no-op instead of a 409" - fill in what you
-  actually did.]_
+These are visible in the commit history:
 
-## What the AI got wrong that had to be fixed _[confirm / add your own words]_
+- **Transaction type semantics** (`b0757aa`) — the first version used generic
+  types; changed to payment methods (`CASH/CARD/UPI/ONLINE`), which meant updating
+  the enum, the validation message, the console, the tests and the docs together.
+- **Permitted currencies** (`3a56122`) — added `INR` to the configured set and to
+  the test that exercises every currency.
+- **Amount-limit error message** (`29a477d`) — reformatted it to show a plain money
+  value (e.g. `10000.00`) instead of a raw `BigDecimal` `toString`.
+- **Web console "Recorded" receipt** (`3f77ef7`, then `392e02f`) — it showed a
+  static `PENDING` line that stayed on screen after the status had been advanced,
+  contradicting the table below it; reworked so the receipt tracks the live status.
+- **Port** (`7809b0f`) — pinned to the default `8080`.
 
-- The environment had no `JAVA_HOME` set, so the first `mvnw` run failed; this was
-  an environment issue, not the code. _[Add anything you hit: a test that failed
-  first time, an annotation that did not behave as expected, etc. If nothing else
-  broke, say so honestly.]_
+## What the AI got wrong that had to be fixed
+
+- **Catch-all exception handler turned 404s into 500s** (`9eebc6b`). The generic
+  `Exception` handler in `GlobalExceptionHandler` was catching Spring's
+  `NoResourceFoundException` (raised for, e.g., a browser requesting `/favicon.ico`)
+  and returning `500` with an `ERROR` log line. Fixed by handling it explicitly as
+  a plain `404`, adding a test (`returns404ForAnUnknownUrl`), and giving the console
+  a data-URI favicon so it stops asking for one.
+- **Stale UI confirmation** (see above, `3f77ef7`) — the AI's first console left the
+  create confirmation showing `PENDING` forever.
+- **Environment, not code:** the machine had no `JAVA_HOME`, so the first `mvnw`
+  run failed until a JDK 17 was installed. No code change.
 
 ## How the final result was checked
 
-- `./mvnw clean test` was run from a clean state - **32 tests pass, 0 failures**
-  (see `TEST_OUTPUT.txt`). The suite drives every operation over real HTTP against
-  the in-memory database, and asserts both the happy path and each failure case
-  (validation, duplicate id, unknown id, forbidden status transition, unsupported
-  currency, over-limit amount).
-- _[confirm]_ I also exercised the API by hand with _[curl / Postman / the `run`
-  described below]_ and checked the status codes and bodies match the README.
+- `./mvnw clean test` was run from a clean state — **34 tests, 0 failures, 0
+  errors** (see [`TEST_OUTPUT.txt`](TEST_OUTPUT.txt)). The suite drives every
+  operation over real HTTP against the in-memory database and asserts both the
+  happy path and each failure case: validation failure, duplicate id, unknown id,
+  forbidden status transition, unsupported currency, over-limit amount, unknown
+  type, missing query parameter, and unknown URL.
+- The build was also verified from a fresh `git clone` with no manual setup.
+- The API was exercised by hand against a running instance (`./mvnw
+  spring-boot:run`), checking that the status codes and JSON bodies match the
+  README — including the duplicate-id case (`201` then `409`, original unchanged)
+  and the not-found case (`404` with a JSON error body).
 
 ### Manual check commands
 
