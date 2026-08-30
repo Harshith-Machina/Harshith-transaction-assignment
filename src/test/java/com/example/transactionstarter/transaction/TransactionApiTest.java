@@ -92,7 +92,7 @@ class TransactionApiTest {
         mockMvc.perform(post("/api/transactions")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(createBody("txn-jpy", "cust-1", "10.00", "JPY", "CASH")))
-                .andExpect(status().isBadRequest())
+                .andExpect(status().isUnprocessableEntity())
                 .andExpect(jsonPath("$.message").value(org.hamcrest.Matchers.containsString("JPY")));
 
         assertThat(repository.count()).isZero();
@@ -112,7 +112,7 @@ class TransactionApiTest {
         mockMvc.perform(post("/api/transactions")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(createBody("txn-big", "cust-1", "10000.01", "GBP", "CASH")))
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isUnprocessableEntity());
 
         assertThat(repository.count()).isZero();
     }

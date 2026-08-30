@@ -74,10 +74,15 @@ public class GlobalExceptionHandler {
         return build(HttpStatus.CONFLICT, ex.getMessage(), request, List.of());
     }
 
+    /**
+     * A business rule was broken by an otherwise well-formed request (unsupported
+     * currency, amount over the limit). 422 rather than 400 so the caller can tell
+     * "I sent something malformed" apart from "the server will not accept this".
+     */
     @ExceptionHandler(TransactionRuleException.class)
     public ResponseEntity<ApiError> handleRule(TransactionRuleException ex,
                                                HttpServletRequest request) {
-        return build(HttpStatus.BAD_REQUEST, ex.getMessage(), request, List.of());
+        return build(HttpStatus.UNPROCESSABLE_ENTITY, ex.getMessage(), request, List.of());
     }
 
     /** Unknown URL or missing static file (e.g. /favicon.ico): a plain 404, not logged. */
