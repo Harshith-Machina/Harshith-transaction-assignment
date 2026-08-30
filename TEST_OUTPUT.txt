@@ -1,5 +1,5 @@
 Command: ./mvnw clean test   (mvnw.cmd clean test on Windows)
-Date:    2026-08-28
+Date:    2026-08-30
 Java:    17.0.20.1 (Temurin)
 Result:  BUILD SUCCESS - 34 tests, 0 failures, 0 errors, 0 skipped
 
@@ -8,21 +8,21 @@ console output is reproducible with `./mvnw clean test` from a clean clone.)
 
 --------------------------------------------------------------------------------
 [INFO] --- maven-compiler-plugin: compile (default-compile) ---
-[INFO] Compiling 15 source files
+[INFO] Compiling 20 source files with javac [debug parameters release 17] to target\classes
 [INFO]
 [INFO] --- maven-compiler-plugin: testCompile (default-testCompile) ---
-[INFO] Compiling 3 source files
+[INFO] Compiling 3 source files with javac [debug parameters release 17] to target\test-classes
 [INFO]
 [INFO] --- maven-surefire-plugin: test (default-test) ---
 [INFO] -------------------------------------------------------
 [INFO]  T E S T S
 [INFO] -------------------------------------------------------
 [INFO] Running com.example.transactionstarter.transaction.domain.TransactionStatusTest
-[INFO] Tests run: 17, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.210 s -- in com.example.transactionstarter.transaction.domain.TransactionStatusTest
+[INFO] Tests run: 17, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.190 s -- in com.example.transactionstarter.transaction.domain.TransactionStatusTest
 [INFO] Running com.example.transactionstarter.transaction.TransactionApiTest
-[INFO] Tests run: 16, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 6.4 s -- in com.example.transactionstarter.transaction.TransactionApiTest
+[INFO] Tests run: 16, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 12.89 s -- in com.example.transactionstarter.transaction.TransactionApiTest
 [INFO] Running com.example.transactionstarter.TransactionStarterApplicationTests
-[INFO] Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.576 s -- in com.example.transactionstarter.TransactionStarterApplicationTests
+[INFO] Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 1.190 s -- in com.example.transactionstarter.TransactionStarterApplicationTests
 [INFO]
 [INFO] Results:
 [INFO]
@@ -31,6 +31,13 @@ console output is reproducible with `./mvnw clean test` from a clean clone.)
 [INFO] ------------------------------------------------------------------------
 [INFO] BUILD SUCCESS
 [INFO] ------------------------------------------------------------------------
+[INFO] Total time:  22.903 s
+[INFO] ------------------------------------------------------------------------
+
+(Note: on a machine that has never downloaded these dependencies before, the
+first `./mvnw clean test` also spends time fetching them and - on Windows with
+real-time antivirus - scanning the jars, which can add a minute. Subsequent runs
+are ~20 s as above.)
 
 --------------------------------------------------------------------------------
 Test breakdown
@@ -45,17 +52,17 @@ TransactionStatusTest (17)  - status transition rules, no Spring context
 
 TransactionApiTest (16)     - full HTTP + in-memory DB
   createsAValidTransactionAsPending
-  rejectsATransactionThatFailsValidationAndStoresNothing
-  rejectsAnUnsupportedCurrency
+  rejectsATransactionThatFailsValidationAndStoresNothing        (400 - format)
+  rejectsAnUnsupportedCurrency                                  (422 - business rule)
   acceptsEveryConfiguredCurrency          (GBP, EUR, USD, INR)
-  rejectsAnAmountOverTheLimit
-  rejectsAnUnknownTransactionType
-  rejectsADuplicateTransactionId
+  rejectsAnAmountOverTheLimit                                   (422 - business rule)
+  rejectsAnUnknownTransactionType                               (400 - unparseable enum)
+  rejectsADuplicateTransactionId                                (409)
   returns404ForATransactionThatDoesNotExist
   returns404ForAnUnknownUrl                (e.g. /favicon.ico -> 404, not 500)
   returnsAnExistingTransaction
   updatesStatusOnAnAllowedTransition
-  rejectsAForbiddenStatusTransitionAndLeavesTheTransactionUnchanged
+  rejectsAForbiddenStatusTransitionAndLeavesTheTransactionUnchanged   (409)
   returns404WhenUpdatingStatusOfAnUnknownTransaction
   returnsOnlyTheGivenCustomersTransactions
   returnsAnEmptyArrayForACustomerWithNoTransactions

@@ -33,7 +33,7 @@
 - Using a caller-supplied id as the JPA primary key, with `existsById` plus the
   database unique constraint as a backstop for duplicate detection.
 - The single `ApiError` response shape and the mapping of each exception to a
-  status code (400 / 404 / 409 / 500).
+  status code (400 format / 422 business rule / 404 / 409 / 500).
 - Treating "Transaction Type" as the payment method (`CASH`, `CARD`, `UPI`,
   `ONLINE`), since the brief leaves the type values to the candidate.
 
@@ -52,6 +52,10 @@ These are visible in the commit history:
   static `PENDING` line that stayed on screen after the status had been advanced,
   contradicting the table below it; reworked so the receipt tracks the live status.
 - **Port** (`7809b0f`) — pinned to the default `8080`.
+- **Business-rule failures now return `422`, not `400`** — unsupported currency and
+  over-limit amount were originally mapped to `400` like a malformed request;
+  changed to `422 Unprocessable Entity` so a client can tell a syntax error apart
+  from a rule the server will not accept. Format-rule failures stay `400`.
 
 ## What the AI got wrong that had to be fixed
 

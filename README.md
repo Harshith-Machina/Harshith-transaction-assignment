@@ -72,8 +72,11 @@ Other assumptions:
 
 ## Validation rules
 
-Format rules are Bean Validation annotations on the request record; rules that need
-the database or configured limits are enforced in `TransactionService`.
+Validation is in two layers. **Format** rules are Bean Validation annotations on the
+request record and fail with **400** (the request is malformed). **Business** rules
+need the database or the configured limits, are enforced in `TransactionService`,
+and fail with **422** (the request is well formed but the server will not accept
+it) — or **409** where it is a conflict with existing state.
 
 | Field | Rule | Enforced by | On failure |
 |---|---|---|---|
@@ -81,9 +84,9 @@ the database or configured limits are enforced in `TransactionService`.
 | `transactionId` | must not already exist | service (`existsById`, plus DB unique constraint as backstop) | 409 |
 | `customerId` | required, `^[A-Za-z0-9-]{1,64}$` | annotation | 400 |
 | `amount` | required, `> 0`, at most 2 decimal places | annotation | 400 |
-| `amount` | `<=` configured maximum (10000.00) | service | 400 |
+| `amount` | `<=` configured maximum (10000.00) | service | 422 |
 | `currency` | required, exactly 3 uppercase letters | annotation | 400 |
-| `currency` | must be in the permitted set | service | 400 |
+| `currency` | must be in the permitted set | service | 422 |
 | `type` | required, one of the `TransactionType` values | annotation + JSON parsing | 400 |
 | `status` on create | not accepted; server sets `PENDING` | ignored by DTO | - |
 | `status` on update | must be a valid enum value **and** an allowed transition | JSON parsing + service | 400 / 409 |
@@ -119,7 +122,8 @@ validation failures).
 
 `201 Created`, `Location: /api/transactions/txn-1001`, body is the stored
 transaction with `status: "PENDING"`.
-`400` if validation fails, `409` if the id already exists.
+`400` if a format rule fails, `422` if a business rule fails (unsupported currency,
+amount over the limit), `409` if the id already exists.
 
 ### B. Get one - `GET /api/transactions/{transactionId}`
 
@@ -163,8 +167,9 @@ not allowed, `400` if the status value is not a known enum.
 
 ## What I would do with more time
 
-- Apply the real variant and add a custom `@SupportedCurrency` validation
-  annotation so the currency check reports as a field error like the others.
+- Apply the real assigned variant.
+- Add per-field detail to the 422 business-rule errors (currency, amount) so the
+  response body points at the offending field, the way the 400 field errors do.
 - A `TransactionService` unit test with a mocked repository and a fixed `Clock`,
   separate from the HTTP tests.
 - Idempotency on create (same id + same body -> return the existing resource).
