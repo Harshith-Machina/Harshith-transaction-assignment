@@ -1,7 +1,8 @@
 package com.example.transactionstarter.transaction;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.hamcrest.Matchers.hasSize;
+import static org.hamcrest.Matchers.contains;
+import static org.hamcrest.Matchers.containsString;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -11,21 +12,28 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.example.transactionstarter.transaction.domain.TransactionStatus;
 import com.example.transactionstarter.transaction.repo.TransactionRepository;
-import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.transaction.annotation.Transactional;
 
 /**
- * End-to-end tests for the four operations, exercised through HTTP against the
- * real in-memory database. Covers every case the challenge asks for plus the
- * status-update and by-customer paths.
+ * Whole-stack integration: real HTTP, real Spring wiring, real in-memory H2,
+ * nothing mocked. Each individual layer is proved on its own in the unit and
+ * slice tests ({@code TransactionStatusTest},
+ * {@code CreateTransactionRequestValidationTest}, {@code TransactionServiceTest},
+ * {@code TransactionControllerTest}). This class proves the layers are wired
+ * together and that data written by one request is really there for the next.
+ *
+ * <p>{@code @Transactional} rolls each test back, so order does not matter.
  */
 @SpringBootTest
 @AutoConfigureMockMvc
+@Transactional
 class TransactionApiTest {
 
     @Autowired
@@ -34,214 +42,130 @@ class TransactionApiTest {
     @Autowired
     private TransactionRepository repository;
 
-    @BeforeEach
-    void clearDatabase() {
-        repository.deleteAll();
-    }
-
-    private static String createBody(String id, String customerId, String amount,
-                                     String currency, String type) {
+    private static String body(String id, String customerId, String amount, String currency, String type) {
         return """
-                {
-                  "transactionId": "%s",
-                  "customerId": "%s",
-                  "amount": %s,
-                  "currency": "%s",
-                  "type": "%s"
-                }
+                { "transactionId": "%s", "customerId": "%s", "amount": %s, "currency": "%s", "type": "%s" }
                 """.formatted(id, customerId, amount, currency, type);
     }
 
-    private void create(String id, String customerId, String amount,
-                        String currency, String type) throws Exception {
-        mockMvc.perform(post("/api/transactions")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(createBody(id, customerId, amount, currency, type)))
+    private void create(String id, String customerId, String amount, String currency, String type) throws Exception {
+        mockMvc.perform(post("/api/transactions").contentType(MediaType.APPLICATION_JSON)
+                        .content(body(id, customerId, amount, currency, type)))
                 .andExpect(status().isCreated());
     }
 
-    // --- A. Create -------------------------------------------------------------
-
     @Test
-    void createsAValidTransactionAsPending() throws Exception {
-        mockMvc.perform(post("/api/transactions")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(createBody("txn-1", "cust-1", "125.50", "GBP", "CASH")))
+    @DisplayName("A transaction can be created, read back, moved through its lifecycle, and listed for its customer")
+    void completeTransactionLifecycle() throws Exception {
+        mockMvc.perform(post("/api/transactions").contentType(MediaType.APPLICATION_JSON)
+                        .content(body("txn-1", "cust-1", "125.50", "GBP", "CASH")))
                 .andExpect(status().isCreated())
                 .andExpect(header().string("Location", "/api/transactions/txn-1"))
-                .andExpect(jsonPath("$.transactionId").value("txn-1"))
-                .andExpect(jsonPath("$.amount").value(125.50))
                 .andExpect(jsonPath("$.status").value("PENDING"));
 
-        assertThat(repository.findById("txn-1")).isPresent();
-    }
-
-    @Test
-    void rejectsATransactionThatFailsValidationAndStoresNothing() throws Exception {
-        mockMvc.perform(post("/api/transactions")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(createBody("txn-bad", "cust-1", "-5.00", "GBP", "CASH")))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.fieldErrors[0].field").value("amount"));
-
-        assertThat(repository.count()).isZero();
-    }
-
-    @Test
-    void rejectsAnUnsupportedCurrency() throws Exception {
-        mockMvc.perform(post("/api/transactions")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(createBody("txn-jpy", "cust-1", "10.00", "JPY", "CASH")))
-                .andExpect(status().isUnprocessableEntity())
-                .andExpect(jsonPath("$.message").value(org.hamcrest.Matchers.containsString("JPY")));
-
-        assertThat(repository.count()).isZero();
-    }
-
-    @Test
-    void acceptsEveryConfiguredCurrency() throws Exception {
-        String[] currencies = {"GBP", "EUR", "USD", "INR"};
-        for (int i = 0; i < currencies.length; i++) {
-            create("cur-" + i, "cust-1", "10.00", currencies[i], "CASH");
-        }
-        assertThat(repository.count()).isEqualTo(currencies.length);
-    }
-
-    @Test
-    void rejectsAnAmountOverTheLimit() throws Exception {
-        mockMvc.perform(post("/api/transactions")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(createBody("txn-big", "cust-1", "40000.01", "GBP", "CASH")))
-                .andExpect(status().isUnprocessableEntity());
-
-        assertThat(repository.count()).isZero();
-    }
-
-    @Test
-    void acceptsAnAmountExactlyOnTheLimit() throws Exception {
-        create("txn-limit", "cust-1", "40000.00", "GBP", "CASH");
-        assertThat(repository.findById("txn-limit")).isPresent();
-    }
-
-    @Test
-    void rejectsAnUnknownTransactionType() throws Exception {
-        mockMvc.perform(post("/api/transactions")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(createBody("txn-x", "cust-1", "10.00", "GBP", "CHARGEBACK")))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.message").value(org.hamcrest.Matchers.containsString("CHARGEBACK")));
-    }
-
-    @Test
-    void rejectsADuplicateTransactionId() throws Exception {
-        create("txn-dup", "cust-1", "10.00", "GBP", "CASH");
-
-        mockMvc.perform(post("/api/transactions")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(createBody("txn-dup", "cust-2", "20.00", "EUR", "ONLINE")))
-                .andExpect(status().isConflict());
-
-        // original is untouched
-        assertThat(repository.findById("txn-dup")).get()
-                .satisfies(t -> {
-                    assertThat(t.getCustomerId()).isEqualTo("cust-1");
-                    assertThat(t.getAmount().toPlainString()).isEqualTo("10.00");
-                });
-    }
-
-    // --- B. Get --------------------------------------------------------------
-
-    @Test
-    void returns404ForATransactionThatDoesNotExist() throws Exception {
-        mockMvc.perform(get("/api/transactions/does-not-exist"))
-                .andExpect(status().isNotFound())
-                .andExpect(jsonPath("$.status").value(404));
-    }
-
-    @Test
-    void returns404ForAnUnknownUrl() throws Exception {
-        mockMvc.perform(get("/favicon.ico"))
-                .andExpect(status().isNotFound())
-                .andExpect(jsonPath("$.status").value(404));
-    }
-
-    @Test
-    void returnsAnExistingTransaction() throws Exception {
-        create("txn-2", "cust-9", "42.00", "EUR", "UPI");
-
-        mockMvc.perform(get("/api/transactions/txn-2"))
+        // reading it back proves the row was persisted, not just echoed
+        mockMvc.perform(get("/api/transactions/txn-1"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.customerId").value("cust-9"))
-                .andExpect(jsonPath("$.currency").value("EUR"))
-                .andExpect(jsonPath("$.type").value("UPI"));
-    }
+                .andExpect(jsonPath("$.customerId").value("cust-1"))
+                .andExpect(jsonPath("$.currency").value("GBP"))
+                .andExpect(jsonPath("$.type").value("CASH"))
+                .andExpect(jsonPath("$.status").value("PENDING"));
 
-    // --- C. Update status --------------------------------------------------------
-
-    @Test
-    void updatesStatusOnAnAllowedTransition() throws Exception {
-        create("txn-3", "cust-1", "10.00", "GBP", "CASH");
-
-        mockMvc.perform(patch("/api/transactions/txn-3/status")
-                        .contentType(MediaType.APPLICATION_JSON)
+        mockMvc.perform(patch("/api/transactions/txn-1/status").contentType(MediaType.APPLICATION_JSON)
                         .content("{\"status\":\"COMPLETED\"}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("COMPLETED"));
 
-        assertThat(repository.findById("txn-3")).get()
-                .satisfies(t -> assertThat(t.getStatus()).isEqualTo(TransactionStatus.COMPLETED));
+        mockMvc.perform(get("/api/transactions").param("customerId", "cust-1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(1))
+                .andExpect(jsonPath("$[0].transactionId").value("txn-1"))
+                .andExpect(jsonPath("$[0].status").value("COMPLETED"));
     }
 
     @Test
-    void rejectsAForbiddenStatusTransitionAndLeavesTheTransactionUnchanged() throws Exception {
-        create("txn-4", "cust-1", "10.00", "GBP", "CASH");
-        mockMvc.perform(patch("/api/transactions/txn-4/status")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"status\":\"COMPLETED\"}"))
-                .andExpect(status().isOk());
+    @DisplayName("A rejected create leaves nothing behind")
+    void invalidInputIsNeverStored() throws Exception {
+        mockMvc.perform(post("/api/transactions").contentType(MediaType.APPLICATION_JSON)
+                        .content(body("txn-bad", "cust-1", "-5.00", "GBP", "CASH")))
+                .andExpect(status().isBadRequest());
 
-        mockMvc.perform(patch("/api/transactions/txn-4/status")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"status\":\"PENDING\"}"))
+        mockMvc.perform(get("/api/transactions/txn-bad")).andExpect(status().isNotFound());
+        assertThat(repository.count()).isZero();
+    }
+
+    @Test
+    @DisplayName("Reusing a transaction ID is refused with 409 and the original is untouched")
+    void duplicateTransactionIdIsRejected() throws Exception {
+        create("txn-dup", "cust-1", "10.00", "GBP", "CASH");
+
+        mockMvc.perform(post("/api/transactions").contentType(MediaType.APPLICATION_JSON)
+                        .content(body("txn-dup", "cust-2", "20.00", "EUR", "ONLINE")))
                 .andExpect(status().isConflict());
 
-        assertThat(repository.findById("txn-4")).get()
-                .satisfies(t -> assertThat(t.getStatus()).isEqualTo(TransactionStatus.COMPLETED));
+        assertThat(repository.findById("txn-dup")).get().satisfies(t -> {
+            assertThat(t.getCustomerId()).isEqualTo("cust-1");
+            assertThat(t.getAmount().toPlainString()).isEqualTo("10.00");
+        });
     }
 
     @Test
-    void returns404WhenUpdatingStatusOfAnUnknownTransaction() throws Exception {
-        mockMvc.perform(patch("/api/transactions/ghost/status")
-                        .contentType(MediaType.APPLICATION_JSON)
+    @DisplayName("A business-rule failure (unsupported currency) surfaces end to end as 422")
+    void businessRuleFailureSurfacesAs422() throws Exception {
+        mockMvc.perform(post("/api/transactions").contentType(MediaType.APPLICATION_JSON)
+                        .content(body("txn-jpy", "cust-1", "10.00", "JPY", "CASH")))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.message").value(containsString("JPY")));
+
+        assertThat(repository.count()).isZero();
+    }
+
+    @Test
+    @DisplayName("A settled transaction cannot be reopened, and the row does not change")
+    void aSettledTransactionCannotChangeAgain() throws Exception {
+        create("txn-3", "cust-1", "10.00", "GBP", "CASH");
+        mockMvc.perform(patch("/api/transactions/txn-3/status").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"status\":\"COMPLETED\"}")).andExpect(status().isOk());
+        mockMvc.perform(patch("/api/transactions/txn-3/status").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"status\":\"REVERSED\"}")).andExpect(status().isOk());
+
+        mockMvc.perform(patch("/api/transactions/txn-3/status").contentType(MediaType.APPLICATION_JSON)
                         .content("{\"status\":\"COMPLETED\"}"))
-                .andExpect(status().isNotFound());
+                .andExpect(status().isConflict());
+
+        assertThat(repository.findById("txn-3")).get()
+                .satisfies(t -> assertThat(t.getStatus()).isEqualTo(TransactionStatus.REVERSED));
     }
 
-    // --- D. Get customer transactions ------------------------------------------
-
     @Test
-    void returnsOnlyTheGivenCustomersTransactions() throws Exception {
+    @DisplayName("One customer never sees another customer's transactions, and they come back oldest first")
+    void customersAreKeptSeparateAndOrdered() throws Exception {
         create("a-1", "alice", "10.00", "GBP", "CASH");
         create("a-2", "alice", "20.00", "GBP", "CARD");
         create("b-1", "bob", "30.00", "EUR", "CASH");
 
         mockMvc.perform(get("/api/transactions").param("customerId", "alice"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$", hasSize(2)))
-                .andExpect(jsonPath("$[*].transactionId",
-                        org.hamcrest.Matchers.containsInAnyOrder("a-1", "a-2")));
-    }
+                .andExpect(jsonPath("$.length()").value(2))
+                .andExpect(jsonPath("$[*].transactionId", contains("a-1", "a-2")));
 
-    @Test
-    void returnsAnEmptyArrayForACustomerWithNoTransactions() throws Exception {
         mockMvc.perform(get("/api/transactions").param("customerId", "nobody"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$", hasSize(0)));
+                .andExpect(jsonPath("$.length()").value(0));
     }
 
     @Test
-    void returns400WhenCustomerIdParameterIsMissing() throws Exception {
-        mockMvc.perform(get("/api/transactions"))
-                .andExpect(status().isBadRequest());
+    void unknownTransactionReturns404() throws Exception {
+        mockMvc.perform(get("/api/transactions/does-not-exist"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.status").value(404));
+    }
+
+    @Test
+    @DisplayName("An unknown URL is a plain 404, not a logged 500")
+    void anUnknownUrlIsAPlain404() throws Exception {
+        mockMvc.perform(get("/favicon.ico"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.status").value(404));
     }
 }

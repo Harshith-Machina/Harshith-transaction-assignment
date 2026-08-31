@@ -2,6 +2,7 @@ package com.example.transactionstarter.transaction.error;
 
 import com.fasterxml.jackson.databind.exc.InvalidFormatException;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.ConstraintViolationException;
 import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -54,6 +55,26 @@ public class GlobalExceptionHandler {
                                                        HttpServletRequest request) {
         return build(HttpStatus.BAD_REQUEST,
                 "Required parameter '" + ex.getParameterName() + "' is missing", request, List.of());
+    }
+
+    /**
+     * A constraint failure on a path variable or query parameter (e.g. a malformed
+     * id in the URL). This arrives as a different exception from body validation;
+     * without this handler the caller would get a 500 for what is plainly a 400.
+     * The property path reads like {@code getById.transactionId}, so only the last
+     * segment is meaningful to the caller.
+     */
+    @ExceptionHandler(ConstraintViolationException.class)
+    public ResponseEntity<ApiError> handleParamValidation(ConstraintViolationException ex,
+                                                          HttpServletRequest request) {
+        List<ApiError.FieldError> fieldErrors = ex.getConstraintViolations().stream()
+                .map(v -> {
+                    String path = v.getPropertyPath().toString();
+                    String field = path.contains(".") ? path.substring(path.lastIndexOf('.') + 1) : path;
+                    return new ApiError.FieldError(field, v.getMessage());
+                })
+                .toList();
+        return build(HttpStatus.BAD_REQUEST, "Validation failed", request, fieldErrors);
     }
 
     @ExceptionHandler(TransactionNotFoundException.class)

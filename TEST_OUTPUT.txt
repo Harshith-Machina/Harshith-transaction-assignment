@@ -1,7 +1,7 @@
 Command: ./mvnw clean test   (mvnw.cmd clean test on Windows)
 Date:    2026-08-31
 Java:    17.0.20.1 (Temurin)
-Result:  BUILD SUCCESS - 35 tests, 0 failures, 0 errors, 0 skipped
+Result:  BUILD SUCCESS - 73 tests, 0 failures, 0 errors, 0 skipped
 
 (Spring Boot startup log lines removed for readability. The full, unedited
 console output is reproducible with `./mvnw clean test` from a clean clone.)
@@ -11,27 +11,33 @@ console output is reproducible with `./mvnw clean test` from a clean clone.)
 [INFO] Compiling 20 source files with javac [debug parameters release 17] to target\classes
 [INFO]
 [INFO] --- maven-compiler-plugin: testCompile (default-testCompile) ---
-[INFO] Compiling 3 source files with javac [debug parameters release 17] to target\test-classes
+[INFO] Compiling 6 source files with javac [debug parameters release 17] to target\test-classes
 [INFO]
 [INFO] --- maven-surefire-plugin: test (default-test) ---
 [INFO] -------------------------------------------------------
 [INFO]  T E S T S
 [INFO] -------------------------------------------------------
 [INFO] Running com.example.transactionstarter.transaction.domain.TransactionStatusTest
-[INFO] Tests run: 17, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.216 s -- in com.example.transactionstarter.transaction.domain.TransactionStatusTest
+[INFO] Tests run: 17, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.221 s -- in com.example.transactionstarter.transaction.domain.TransactionStatusTest
+[INFO] Running com.example.transactionstarter.transaction.service.TransactionServiceTest
+[INFO] Tests run: 15, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 1.572 s -- in com.example.transactionstarter.transaction.service.TransactionServiceTest
 [INFO] Running com.example.transactionstarter.transaction.TransactionApiTest
-[INFO] Tests run: 17, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 13.62 s -- in com.example.transactionstarter.transaction.TransactionApiTest
+[INFO] Tests run: 8, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 13.22 s -- in com.example.transactionstarter.transaction.TransactionApiTest
+[INFO] Running com.example.transactionstarter.transaction.web.dto.CreateTransactionRequestValidationTest
+[INFO] Tests run: 18, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.127 s -- in com.example.transactionstarter.transaction.web.dto.CreateTransactionRequestValidationTest
+[INFO] Running com.example.transactionstarter.transaction.web.TransactionControllerTest
+[INFO] Tests run: 14, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 1.331 s -- in com.example.transactionstarter.transaction.web.TransactionControllerTest
 [INFO] Running com.example.transactionstarter.TransactionStarterApplicationTests
-[INFO] Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 1.146 s -- in com.example.transactionstarter.TransactionStarterApplicationTests
+[INFO] Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 1.691 s -- in com.example.transactionstarter.TransactionStarterApplicationTests
 [INFO]
 [INFO] Results:
 [INFO]
-[INFO] Tests run: 35, Failures: 0, Errors: 0, Skipped: 0
+[INFO] Tests run: 73, Failures: 0, Errors: 0, Skipped: 0
 [INFO]
 [INFO] ------------------------------------------------------------------------
 [INFO] BUILD SUCCESS
 [INFO] ------------------------------------------------------------------------
-[INFO] Total time:  24.941 s
+[INFO] Total time:  27.463 s
 [INFO] ------------------------------------------------------------------------
 
 (Note: on a machine that has never downloaded these dependencies before, the
@@ -40,34 +46,64 @@ real-time antivirus - scanning the jars, which can add a minute. Subsequent runs
 are ~25 s as above.)
 
 --------------------------------------------------------------------------------
-Test breakdown
+Test suite - each rule tested at the lowest layer it lives in
 --------------------------------------------------------------------------------
 
-TransactionStatusTest (17)  - status transition rules, no Spring context
-  permitsExpectedTransitions            x4  (PENDING->COMPLETED/FAILED/CANCELLED, COMPLETED->REVERSED)
-  rejectsUnexpectedTransitions          x6  (e.g. PENDING->REVERSED, COMPLETED->PENDING)
-  neverPermitsATransitionToItself       x5  (one per status)
+TransactionStatusTest (17)                       - the lifecycle rules, no Spring
+  permitsExpectedTransitions            x4         PENDING -> COMPLETED/FAILED/CANCELLED, COMPLETED -> REVERSED
+  rejectsUnexpectedTransitions          x6         e.g. PENDING -> REVERSED, COMPLETED -> PENDING
+  neverPermitsATransitionToItself       x5         one per status
   terminalStatusesHaveNoOnwardTransitions
   newTransactionsStartPending
 
-TransactionApiTest (17)     - full HTTP + in-memory DB
-  createsAValidTransactionAsPending
-  rejectsATransactionThatFailsValidationAndStoresNothing        (400 - format)
-  rejectsAnUnsupportedCurrency                                  (422 - business rule)
-  acceptsEveryConfiguredCurrency          (GBP, EUR, USD, INR)
-  rejectsAnAmountOverTheLimit                                   (422 - business rule)
-  acceptsAnAmountExactlyOnTheLimit        (40000.00 accepted)
-  rejectsAnUnknownTransactionType                               (400 - unparseable enum)
-  rejectsADuplicateTransactionId                                (409)
-  returns404ForATransactionThatDoesNotExist
-  returns404ForAnUnknownUrl                (e.g. /favicon.ico -> 404, not 500)
-  returnsAnExistingTransaction
-  updatesStatusOnAnAllowedTransition
-  rejectsAForbiddenStatusTransitionAndLeavesTheTransactionUnchanged   (409)
-  returns404WhenUpdatingStatusOfAnUnknownTransaction
-  returnsOnlyTheGivenCustomersTransactions
-  returnsAnEmptyArrayForACustomerWithNoTransactions
-  returns400WhenCustomerIdParameterIsMissing
+CreateTransactionRequestValidationTest (18)      - the DTO annotations via a raw Validator, no Spring
+  aFullyPopulatedRequestHasNoViolations
+  blankTransactionIdIsRejected / illegal chars / over 64 chars
+  blankCustomerIdIsRejected
+  nullAmount / zeroAmount / negativeAmount / more than 2 decimal places
+  amountValidationDoesNotComplainAboutTheConfiguredMaximum   (that rule is the service's)
+  badlyShapedCurrencyIsRejected         x6         " ", gbp, GB, POUND, G8P, "12 "
+  nullTypeIsRejected
+  theCurrencyMessageNamesTheExpectedFormat
 
-TransactionStarterApplicationTests (1) - provided sample, kept
+TransactionServiceTest (15)                      - the business rules, mocked repository + fixed Clock, no Spring
+  createStoresAPendingTransaction
+  createStampsTimestampsFromTheClock
+  createNormalisesAmountScale                     10 -> 10.00
+  createRejectsACurrencyOutsideThePermittedSet ... + never writes
+  createRejectsAnAmountOverTheConfiguredMaximum ... + never writes
+  createAcceptsAnAmountExactlyOnTheMaximum
+  createRejectsADuplicateIdBeforeWriting
+  createTranslatesADbUniqueViolationIntoADuplicateError      (the lost-race backstop)
+  getByIdReturnsTheStoredTransaction / getByIdThrowsWhenTheIdIsUnknown
+  updateStatusAppliesAnAllowedTransition          (updatedAt moves, createdAt does not)
+  updateStatusRejectsAForbiddenTransition ... + never writes
+  updateStatusThrowsWhenTheTransactionIsUnknown
+  getByCustomerReturnsWhateverTheOrderedQueryReturns / ... empty list
+
+TransactionControllerTest (14)                   - the web layer, @WebMvcTest, mocked service
+  createReturns201WithLocationHeaderAndBody
+  createReturns400WhenTheBodyFailsValidation ... (service never called)
+  createReturns400OnAnUnknownEnumValue
+  createReturns409WhenTheServiceReportsADuplicate
+  createReturns422WhenTheServiceReportsABusinessRuleViolation
+  getReturns200WithTheTransaction / getReturns404WhenTheServiceThrowsNotFound
+  getReturns400WhenThePathIdIsMalformed           (65-char id in the URL -> 400, not 500)
+  listReturns400WhenTheCustomerIdParamIsMalformed
+  patchReturns200OnASuccessfulStatusChange
+  patchReturns409WhenTheTransitionIsNotAllowed
+  patchReturns400WhenTheStatusIsMissingFromTheBody
+  listReturns200WithAnArray / listReturns400WhenTheCustomerIdParameterIsMissing
+
+TransactionApiTest (8)                           - whole stack, @SpringBootTest + real H2, @Transactional
+  completeTransactionLifecycle                    create -> read back -> settle -> list
+  invalidInputIsNeverStored
+  duplicateTransactionIdIsRejected
+  businessRuleFailureSurfacesAs422
+  aSettledTransactionCannotChangeAgain
+  customersAreKeptSeparateAndOrdered
+  unknownTransactionReturns404
+  anUnknownUrlIsAPlain404
+
+TransactionStarterApplicationTests (1)           - provided sample, kept
   contextLoads

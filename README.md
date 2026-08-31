@@ -29,7 +29,7 @@ up by customer or id, and advancing status. It is a thin client over the same
 REST API and is **not part of the assessed exercise** &mdash; the API is the
 deliverable. It adds no dependencies and does not affect `mvnw clean test`.
 
-The latest test run is in [`TEST_OUTPUT.txt`](TEST_OUTPUT.txt): **35 tests, all passing.**
+The latest test run is in [`TEST_OUTPUT.txt`](TEST_OUTPUT.txt): **73 tests, all passing.**
 
 ## My understanding of the problem
 
@@ -90,6 +90,7 @@ it) — or **409** where it is a conflict with existing state.
 | `type` | required, one of the `TransactionType` values | annotation + JSON parsing | 400 |
 | `status` on create | not accepted; server sets `PENDING` | ignored by DTO | - |
 | `status` on update | must be a valid enum value **and** an allowed transition | JSON parsing + service | 400 / 409 |
+| `transactionId` / `customerId` in the URL | same `^[A-Za-z0-9-]{1,64}$` shape | `@Validated` controller | 400 |
 
 ### Status transition rules
 
@@ -145,16 +146,19 @@ not allowed, `400` if the status value is not a known enum.
 
 ## How I approached testing
 
-- **`TransactionStatusTest`** - plain unit tests for the transition rules
-  (parameterised: allowed pairs, forbidden pairs, self-transitions, terminal states).
-- **`TransactionApiTest`** - `@SpringBootTest` + `MockMvc` against the real H2
-  database, driving each operation over HTTP. Covers the four cases the brief names
-  (created OK, rejected by validation, duplicate id, unknown id) plus unsupported
-  currency, over-limit amount, unknown type, get existing, both status-update
-  outcomes, unknown-id status update, per-customer filtering, empty list, and the
-  missing-parameter case.
-- The provided `contextLoads` sample test is kept.
-- Each API test clears the table first, so tests do not depend on order.
+Each rule is tested at the lowest layer it lives in, then integration tests prove
+the layers are wired together. 73 tests in five classes:
+
+| Class | Scope | Speed |
+|---|---|---|
+| **`TransactionStatusTest`** | the transition rules alone - parameterised over allowed pairs, forbidden pairs, self-transitions, terminal states. No Spring. | instant |
+| **`CreateTransactionRequestValidationTest`** | the Bean Validation annotations alone, driven through a raw `Validator` - one test per constraint, proving each fires on exactly the input it should. No Spring. | instant |
+| **`TransactionServiceTest`** | the business rules alone - mocked repository, **fixed `Clock`**. Currency whitelist, amount cap and its boundary, amount-scale normalisation, timestamps from the clock, duplicate rejected before any write, a DB unique-violation turned into a clean `409`, every status-update outcome. `verify(never()).save()` on each rejection path. No Spring context. | fast (mocked) |
+| **`TransactionControllerTest`** | the web layer alone - `@WebMvcTest`, mocked service. Proves the controller and exception handler map results and exceptions to the right status and body (201 + `Location`, 400 vs 422 vs 409 vs 404), that a malformed body never reaches the service, and that a malformed id in the URL is a 400 rather than a wasted lookup. | fast (slice) |
+| **`TransactionApiTest`** | whole stack - `@SpringBootTest` + `MockMvc` + real H2, nothing mocked. The four scenarios the brief names, all four operations end to end, the full status lifecycle, and that data written by one request is really there for the next. | slower (full context) |
+
+The provided `contextLoads` smoke test is kept. Every integration test clears the
+table first, so order does not matter.
 
 ## Known limitations
 
@@ -163,15 +167,15 @@ not allowed, `400` if the status value is not a known enum.
 - Duplicate-id detection is check-then-write; the database unique constraint is the
   real guard against a race, and the service maps that back to a `409`.
 - The assigned variant was not applied (see Assumptions).
-- `Clock` is injectable but time is not asserted precisely in the integration tests.
+- Currency is only shape-checked against the permitted set, not against a real
+  ISO-4217 register, so an unassigned but well-formed code would still be rejected
+  for the right reason but with a generic message.
 
 ## What I would do with more time
 
 - Apply the real assigned variant.
 - Add per-field detail to the 422 business-rule errors (currency, amount) so the
   response body points at the offending field, the way the 400 field errors do.
-- A `TransactionService` unit test with a mocked repository and a fixed `Clock`,
-  separate from the HTTP tests.
 - Idempotency on create (same id + same body -> return the existing resource).
 - OpenAPI/Swagger for the contract.
 - Persist a small status-change history rather than only the current status.

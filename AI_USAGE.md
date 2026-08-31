@@ -58,6 +58,18 @@ These are visible in the commit history:
   from a rule the server will not accept. Format-rule failures stay `400`.
 - **Maximum amount raised to `40000.00`** (`application.yml`) and a boundary test
   added (an amount exactly on the limit is accepted).
+- **Tests restructured into a layered pyramid** — the original suite proved the
+  behaviour but only through `@SpringBootTest`. Added isolated layers: a raw
+  `Validator` test for the DTO annotations, a `TransactionServiceTest` with a
+  mocked repository and a fixed `Clock` (so timestamps and every rejection path
+  are asserted precisely and fast), and a `@WebMvcTest` slice for the controller.
+  The full-stack test was trimmed to the end-to-end cases it alone can prove.
+- **Path/query identifiers are now validated too** — a malformed id in the URL
+  used to fall through to the service and 404 (or, for a value the JPA column
+  could not hold, 500). Added `@Validated` + `@Pattern` on the `@PathVariable`
+  and `@RequestParam` ids, and a `ConstraintViolationException` handler, so it is
+  a deliberate 400. Found by testing the failure path rather than trusting that
+  the body-validation annotations covered it.
 
 ## What the AI got wrong that had to be fixed
 
@@ -74,13 +86,13 @@ These are visible in the commit history:
 
 ## How the final result was checked
 
-- `./mvnw clean test` was run from a clean state — **35 tests, 0 failures, 0
-  errors** (see [`TEST_OUTPUT.txt`](TEST_OUTPUT.txt)). The suite drives every
-  operation over real HTTP against the in-memory database and asserts both the
-  happy path and each failure case: validation failure, duplicate id, unknown id,
-  forbidden status transition, unsupported currency, over-limit amount (and an
-  amount exactly on the limit succeeding), unknown type, missing query parameter,
-  and unknown URL.
+- `./mvnw clean test` was run from a clean state — **73 tests, 0 failures, 0
+  errors** (see [`TEST_OUTPUT.txt`](TEST_OUTPUT.txt)). The suite is layered: the
+  status rules, the request-validation annotations and the service rules are each
+  tested in isolation with no Spring context; the web layer is tested as a
+  `@WebMvcTest` slice with the service mocked; and a `@SpringBootTest` integration
+  class drives all four operations end to end against real H2. Rejection paths
+  assert that nothing is written.
 - The build was also verified from a fresh `git clone` with no manual setup.
 - The API was exercised by hand against a running instance (`./mvnw
   spring-boot:run`), checking that the status codes and JSON bodies match the
