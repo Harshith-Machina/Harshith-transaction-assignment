@@ -29,7 +29,7 @@ up by customer or id, and advancing status. It is a thin client over the same
 REST API and is **not part of the assessed exercise** &mdash; the API is the
 deliverable. It adds no dependencies and does not affect `mvnw clean test`.
 
-The latest test run is in [`TEST_OUTPUT.txt`](TEST_OUTPUT.txt): **34 tests, all passing.**
+The latest test run is in [`TEST_OUTPUT.txt`](TEST_OUTPUT.txt): **35 tests, all passing.**
 
 ## My understanding of the problem
 
@@ -50,7 +50,7 @@ are trivial to change:
 | Setting | Value used | Where to change |
 |---|---|---|
 | Permitted currencies | `GBP`, `EUR`, `USD`, `INR` | `application.yml` -> `transaction.allowed-currencies` |
-| Maximum amount | `10000.00` | `application.yml` -> `transaction.max-amount` |
+| Maximum amount | `40000.00` | `application.yml` -> `transaction.max-amount` |
 | Transaction types | `CASH`, `CARD`, `UPI`, `ONLINE` | `TransactionType` enum |
 
 The brief leaves "Transaction Type" open. For a shop-counter service the useful
@@ -84,7 +84,7 @@ it) — or **409** where it is a conflict with existing state.
 | `transactionId` | must not already exist | service (`existsById`, plus DB unique constraint as backstop) | 409 |
 | `customerId` | required, `^[A-Za-z0-9-]{1,64}$` | annotation | 400 |
 | `amount` | required, `> 0`, at most 2 decimal places | annotation | 400 |
-| `amount` | `<=` configured maximum (10000.00) | service | 422 |
+| `amount` | `<=` configured maximum (40000.00) | service | 422 |
 | `currency` | required, exactly 3 uppercase letters | annotation | 400 |
 | `currency` | must be in the permitted set | service | 422 |
 | `type` | required, one of the `TransactionType` values | annotation + JSON parsing | 400 |

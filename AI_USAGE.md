@@ -47,7 +47,7 @@ These are visible in the commit history:
 - **Permitted currencies** (`3a56122`) — added `INR` to the configured set and to
   the test that exercises every currency.
 - **Amount-limit error message** (`29a477d`) — reformatted it to show a plain money
-  value (e.g. `10000.00`) instead of a raw `BigDecimal` `toString`.
+  value (e.g. `40000.00`) instead of a raw `BigDecimal` `toString`.
 - **Web console "Recorded" receipt** (`3f77ef7`, then `392e02f`) — it showed a
   static `PENDING` line that stayed on screen after the status had been advanced,
   contradicting the table below it; reworked so the receipt tracks the live status.
@@ -56,6 +56,8 @@ These are visible in the commit history:
   over-limit amount were originally mapped to `400` like a malformed request;
   changed to `422 Unprocessable Entity` so a client can tell a syntax error apart
   from a rule the server will not accept. Format-rule failures stay `400`.
+- **Maximum amount raised to `40000.00`** (`application.yml`) and a boundary test
+  added (an amount exactly on the limit is accepted).
 
 ## What the AI got wrong that had to be fixed
 
@@ -72,12 +74,13 @@ These are visible in the commit history:
 
 ## How the final result was checked
 
-- `./mvnw clean test` was run from a clean state — **34 tests, 0 failures, 0
+- `./mvnw clean test` was run from a clean state — **35 tests, 0 failures, 0
   errors** (see [`TEST_OUTPUT.txt`](TEST_OUTPUT.txt)). The suite drives every
   operation over real HTTP against the in-memory database and asserts both the
   happy path and each failure case: validation failure, duplicate id, unknown id,
-  forbidden status transition, unsupported currency, over-limit amount, unknown
-  type, missing query parameter, and unknown URL.
+  forbidden status transition, unsupported currency, over-limit amount (and an
+  amount exactly on the limit succeeding), unknown type, missing query parameter,
+  and unknown URL.
 - The build was also verified from a fresh `git clone` with no manual setup.
 - The API was exercised by hand against a running instance (`./mvnw
   spring-boot:run`), checking that the status codes and JSON bodies match the

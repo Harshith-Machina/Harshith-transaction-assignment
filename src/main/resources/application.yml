@@ -19,4 +19,4 @@ server:
 # the only place currency / amount rules are configured.
 transaction:
   allowed-currencies: GBP,EUR,USD,INR
-  max-amount: 10000.00
+  max-amount: 40000.00

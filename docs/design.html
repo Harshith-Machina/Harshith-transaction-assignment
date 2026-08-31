@@ -283,9 +283,9 @@
           <tr><td class="tag">transactionId</td><td>must not already exist</td><td>service + DB constraint</td><td><span class="tag bad">409</span></td></tr>
           <tr><td class="tag">customerId</td><td><code>^[A-Za-z0-9-]{1,64}$</code>, required</td><td>annotation</td><td><span class="tag bad">400</span></td></tr>
           <tr><td class="tag">amount</td><td>&gt; 0, at most 2 decimal places</td><td>annotation</td><td><span class="tag bad">400</span></td></tr>
-          <tr><td class="tag">amount</td><td>&le; 10000.00 (configured)</td><td>service</td><td><span class="tag bad">400</span></td></tr>
+          <tr><td class="tag">amount</td><td>&le; 40000.00 (configured)</td><td>service</td><td><span class="tag bad">422</span></td></tr>
           <tr><td class="tag">currency</td><td>exactly 3 uppercase letters</td><td>annotation</td><td><span class="tag bad">400</span></td></tr>
-          <tr><td class="tag">currency</td><td>in {GBP, EUR, USD, INR}</td><td>service</td><td><span class="tag bad">400</span></td></tr>
+          <tr><td class="tag">currency</td><td>in {GBP, EUR, USD, INR}</td><td>service</td><td><span class="tag bad">422</span></td></tr>
           <tr><td class="tag">type</td><td>a known enum value</td><td>annotation + JSON parse</td><td><span class="tag bad">400</span></td></tr>
           <tr><td class="tag">status (create)</td><td>not accepted &mdash; forced to <code>PENDING</code></td><td>DTO omits it</td><td><span class="tag ok">&mdash;</span></td></tr>
         </tbody>
@@ -342,7 +342,7 @@
       <div class="endpoint">
         <div class="line"><span class="method post">POST</span><span class="path">/api/transactions</span></div>
         <p>Validate and store a new transaction. Body: <code>transactionId, customerId, amount, currency, type</code>. Returns the stored record at <code>PENDING</code>.</p>
-        <div class="codes">201 Created + Location &nbsp;|&nbsp; 400 invalid &nbsp;|&nbsp; 409 duplicate id</div>
+        <div class="codes">201 Created + Location &nbsp;|&nbsp; 400 malformed &nbsp;|&nbsp; 422 business rule &nbsp;|&nbsp; 409 duplicate id</div>
       </div>
       <div class="endpoint">
         <div class="line"><span class="method get">GET</span><span class="path">/api/transactions/{transactionId}</span></div>
@@ -370,7 +370,7 @@
         <h3 style="margin-top:0">Variant defaults</h3>
         <ul class="clean">
           <li>Currencies <code>GBP, EUR, USD, INR</code> &mdash; <code>application.yml</code></li>
-          <li>Maximum amount <code>10000.00</code> &mdash; <code>application.yml</code></li>
+          <li>Maximum amount <code>40000.00</code> &mdash; <code>application.yml</code></li>
           <li>Types <code>CASH, CARD, UPI, ONLINE</code> &mdash; <code>TransactionType</code> enum</li>
         </ul>
       </div>

@@ -33,7 +33,7 @@ public record TransactionProperties(
         return amount.compareTo(maxAmount) <= 0;
     }
 
-    /** The limit as a plain money string, e.g. {@code "10000.00"}, for messages. */
+    /** The limit as a plain money string, e.g. {@code "40000.00"}, for messages. */
     public String maxAmountDisplay() {
         return maxAmount.setScale(2, RoundingMode.HALF_UP).toPlainString();
     }

@@ -111,10 +111,16 @@ class TransactionApiTest {
     void rejectsAnAmountOverTheLimit() throws Exception {
         mockMvc.perform(post("/api/transactions")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(createBody("txn-big", "cust-1", "10000.01", "GBP", "CASH")))
+                        .content(createBody("txn-big", "cust-1", "40000.01", "GBP", "CASH")))
                 .andExpect(status().isUnprocessableEntity());
 
         assertThat(repository.count()).isZero();
+    }
+
+    @Test
+    void acceptsAnAmountExactlyOnTheLimit() throws Exception {
+        create("txn-limit", "cust-1", "40000.00", "GBP", "CASH");
+        assertThat(repository.findById("txn-limit")).isPresent();
     }
 
     @Test
